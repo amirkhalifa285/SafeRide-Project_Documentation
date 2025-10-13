@@ -3,8 +3,34 @@
 **Date:** March 9, 2026
 **Owner:** Amir + execution agent
 **Priority:** CRITICAL (blocks Run 010 eval recovery and all future training)
-**Status:** ACTIVE — root cause analysis complete, fixes ready to implement
+**Status:** IN PROGRESS — core code fixes implemented, tests green, dataset regeneration/audit pending
 **Parent Plan:** `RUN_010_EVAL_RECOVERY_PLAN.md` (Phase E3, step 6c)
+
+---
+
+## 0. Progress Update (March 9, 2026)
+
+### Implemented
+
+- Added shared scenario-layout helper: `roadsense-v2v/ml/scenario_layout.py`
+- `gen_scenarios.py` now redistributes peer `departPos` after dropout and forces generated `scenario.sumocfg` end time to `65s`
+- `fix_eval_peer_counts.py` now redistributes peer `departPos` after enforcing `n` and rewrites copied `scenario.sumocfg` to `65s`
+- `convoy_env.py` default episode length reduced from `1000` to `500` steps
+- `hazard_injector.py` hazard window moved from steps `30-80` to `150-350`
+- `ml/scenarios/base_real/scenario.sumocfg` updated from `<end value="120" />` to `<end value="65" />`
+- Unit/integration tests updated to match the new timing window and shorter route budget
+
+### Validation Completed
+
+- Targeted unit slice for the touched files passed locally (`77 passed`)
+- Docker integration suite passed after updating `test_eval_matrix_coverage_mini` for the new hazard window
+
+### Remaining Before Run 011
+
+- Generate the next fixed dataset (`dataset_v6` or final chosen name) with the new spacing/timing behavior
+- Run smoke audit on representative `n=1..5` eval scenarios
+- Run full capability audit and verify `15/15` deterministic bucket support
+- Visually validate the resulting scenarios in SUMO GUI before training
 
 ---
 
@@ -168,6 +194,8 @@ episode.
 
 **Alternative:** 450 steps (45s) for more margin at high speedFactor.
 
+**Implementation status:** DONE on March 9, 2026 (`DEFAULT_MAX_STEPS = 500`).
+
 #### b) `hazard_injector.py` — Adjust hazard window
 
 Current: RL steps 30-80 (sim seconds ~9-14 after start).
@@ -188,6 +216,9 @@ This gives:
 - ~10-15s after hazard for the model to react before route ends
 - Safe margin even at speedFactor=1.2
 
+**Implementation status:** DONE on March 9, 2026
+(`HAZARD_WINDOW_START = 150`, `HAZARD_WINDOW_END = 350`).
+
 #### c) `scenario.sumocfg` (generated) — Reduce sim end time
 
 ```
@@ -199,11 +230,19 @@ This gives:
 **Implementation:** Modify `gen_scenarios.py` to set the sumocfg end time, or
 modify the base_real template.
 
+**Implementation status:** DONE on March 9, 2026 in both places:
+- base template `ml/scenarios/base_real/scenario.sumocfg`
+- generated/rewritten scenarios via `gen_scenarios.py` and `fix_eval_peer_counts.py`
+
 #### d) `train_convoy.py` / `evaluate_model.py` — Update defaults
 
 Both scripts accept `--max_steps`. The default comes from `convoy_env.py`, so
 changing the class default is sufficient. But any hardcoded values in cloud
 training scripts must also be updated.
+
+**Implementation status:** VERIFIED — no additional code change required.
+`train_convoy.py` / `evaluate_model.py` inherit the env default unless
+explicitly overridden.
 
 ### Fix 2: Redistribute departPos with Wider Spacing
 
@@ -240,6 +279,8 @@ These gaps ensure:
 - All ranks 1..n remain ahead of ego during the hazard window
 - The farthest vehicle (at 125m for n=5) still has 660m of road to travel
 
+**Implementation status:** DONE on March 9, 2026.
+
 #### b) `gen_scenarios.py` — Apply same redistribution for training scenarios
 
 Training scenarios also need proper spacing. Add a
@@ -250,6 +291,9 @@ Parameters:
 - `ego_pos`: 0.0 (fixed)
 - `min_gap`: 25.0m
 - `max_convoy_span`: 600.0m (route_length - safety_buffer)
+
+**Implementation status:** DONE on March 9, 2026 via shared helper
+`ml/scenario_layout.py`.
 
 ### Fix 3: Tighten speedFactor Range (Optional but Recommended)
 
@@ -263,20 +307,23 @@ Recommended: **(0.9, 1.1)** — 22% variation, still provides diversity.
 
 This is optional if Fix 1 and Fix 2 work, but reduces edge cases.
 
+**Implementation status:** NOT IMPLEMENTED. Deferred unless the new spacing +
+timing fixes still leave instability at the audit stage.
+
 ---
 
 ## 5. Implementation Order
 
-1. **Fix 2a:** Modify `fix_eval_peer_counts.py` to redistribute departPos
-2. **Fix 2b:** Add same redistribution to `gen_scenarios.py`
-3. **Fix 1a:** Change `DEFAULT_MAX_STEPS` to 500
-4. **Fix 1b:** Change hazard window to steps 150-350
-5. **Fix 1c:** Update sumocfg end time in generation
-6. **Unit tests:** Update existing tests for new defaults
-7. **Generate dataset_v6** with all fixes
-8. **Smoke audit** on representative scenarios
-9. **Full capability audit** if smoke passes
-10. **Resume E3→E4** from the recovery plan
+1. [x] **Fix 2a:** Modify `fix_eval_peer_counts.py` to redistribute departPos
+2. [x] **Fix 2b:** Add same redistribution to `gen_scenarios.py`
+3. [x] **Fix 1a:** Change `DEFAULT_MAX_STEPS` to 500
+4. [x] **Fix 1b:** Change hazard window to steps 150-350
+5. [x] **Fix 1c:** Update sumocfg end time in generation
+6. [x] **Unit tests:** Update existing tests for new defaults
+7. [ ] **Generate dataset_v6** with all fixes
+8. [ ] **Smoke audit** on representative scenarios
+9. [ ] **Full capability audit** if smoke passes
+10. [ ] **Resume E3→E4** from the recovery plan
 
 ### Impact on existing training
 
@@ -298,19 +345,24 @@ After all fixes:
 - [ ] Smoke audit: all 5 representative scenarios support rank 1
 - [ ] Full audit: all 15 buckets (n=1..5, rank=1..n) have ≥1 supporting scenario
 - [ ] Ego never overtakes any peer during the hazard window (steps 150-350)
+- [x] Targeted unit slice for the fix passes
+- [x] Docker integration suite passes with the updated hazard window
 
 ---
 
-## 7. Files to Modify
+## 7. Files Modified / Verified
 
 | File | Change |
 |------|--------|
-| `ml/scripts/fix_eval_peer_counts.py` | Add `redistribute_positions()` after peer drop |
-| `ml/scripts/gen_scenarios.py` | Add `redistribute_positions()` after peer dropout |
-| `ml/envs/convoy_env.py` line 30 | `DEFAULT_MAX_STEPS = 500` |
-| `ml/envs/hazard_injector.py` lines 16-17 | `HAZARD_WINDOW_START = 150`, `HAZARD_WINDOW_END = 350` |
-| `ml/scenarios/base_real/scenario.sumocfg` line 8 | `<end value="65" />` |
-| `ml/scripts/gen_scenarios.py` | Set sumocfg end time during generation |
-| Unit tests for hazard_injector | Update window constants |
-| Unit tests for convoy_env | Update max_steps assumptions |
-| Cloud training scripts | Verify no hardcoded max_steps=1000 |
+| `ml/scenario_layout.py` | New shared helper for peer spacing + sumocfg end time |
+| `ml/scripts/fix_eval_peer_counts.py` | Redistribute peer `departPos` after peer-count enforcement; rewrite sumocfg end time to `65s` |
+| `ml/scripts/gen_scenarios.py` | Redistribute peer `departPos` after dropout; set generated sumocfg end time to `65s` |
+| `ml/envs/convoy_env.py` | `DEFAULT_MAX_STEPS = 500` |
+| `ml/envs/hazard_injector.py` | `HAZARD_WINDOW_START = 150`, `HAZARD_WINDOW_END = 350` |
+| `ml/scenarios/base_real/scenario.sumocfg` | Base template end time changed to `65s` |
+| `ml/tests/unit/test_fix_eval_peer_counts.py` | Added assertions for redistributed positions + rewritten sumocfg end time |
+| `ml/tests/unit/test_gen_scenarios.py` | Added assertions for redistributed positions + generated sumocfg end time |
+| `ml/tests/unit/test_hazard_injector.py` | Updated hazard-window expectations |
+| `ml/tests/unit/test_convoy_env.py` | Added default max-steps assertion |
+| `ml/tests/integration/test_run006_fixes.py` | Updated hazard-step/max-step assumptions for the new `150-350` window |
+| `ml/training/train_convoy.py` / `ml/scripts/evaluate_model.py` | Verified no hardcoded `max_steps=1000` dependency requiring patch |
