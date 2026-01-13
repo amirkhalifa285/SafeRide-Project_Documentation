@@ -1,0 +1,14 @@
+Meeting_with_professors141225
+
+1) The agent will be working in one vehicle meaning if we have 3 cars in a convoy, the agent is working in the vehicle that is in the back.
+
+
+2)recording data will be this way:
+We will be recording only with one car ( the one that is always in the back picking up from V002 and V003 lets say) and this is the csv that the model should get in order to make desicions.
+
+Basically we do not need to record the sensors of vehicle that is making the recording (this is already incroprated on v001 we see messages only from v002 and v003) and the simulation will be setting the speed and sensor data of the vehicle ( where the ai model is active ) accordingly, meaaning according to what it sees from the other vehicles , I think the way we understood it before is that the AI model takes the messages of all vehicles processes them and sends alerts, but no, the model will be active in one vehicle recieve data from all others and act accordingly in THAT SAID vehicle e.g slow down alert etc...
+
+3) since we log with our SD card with a button, in the end we decided to go with scenarios. meaning we press button to record record a scenario say a convoy where the last car we hit a hard brake then we press the button, move to next scenario press the button again to record. this will be the way. and in the end we will give these recording from ONE vehicle to the AI model and the simulation to augment
+
+
+ultrathink these points from the professors, and we will be doing it that way, from my point of view it looks like it simplifies the approach for us, we do not need to process 3 files from 3 vehicles and combine into one file. so think deeply about the architecture of the project and tell me best  approach do we take to incorprate these requirements.  
