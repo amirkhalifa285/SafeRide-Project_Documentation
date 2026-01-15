@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 13, 2026
+**Last Updated:** January 15, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: n-Element Architecture Implementation
+## CURRENT PHASE: Phase 5 - Firmware Migration (Deep Sets Complete)
 
 ```
 ================================================================================
@@ -27,10 +27,9 @@ THE n-ELEMENT PROBLEM:
   - Solution: Permutation-invariant set encoder (Deep Sets)
 
 WHAT WE ARE DOING NOW:
-  1. Implementing DeepSetPolicy network (shared encoder + max pooling)
-  2. Updating ConvoyEnv to emit Dict observations with variable peers
-  3. Updating ESP-NOW emulator to support n peers (not hardcoded V002/V003)
-  4. Updating firmware inference loop for ESP32
+  1. Firmware migration: port Deep Sets inference to ESP32 (Phase 5)
+  2. ESP-NOW LR mode migration after firmware port
+  3. Production training runs with longer timesteps + eval coverage
 
 KEY DOCUMENTS:
   - Architecture: 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
@@ -53,21 +52,24 @@ DO NOT:
 COMPLETED                       CURRENT                         PLANNED
 ─────────────────────────────────────────────────────────────────────────────────
 
-[Phase 1: RTT Firmware]    →    [Phase 2: Deep Sets]    →    [Phase 3: LR Mode]
-  ✅ 42/42 tests passing         ► Architecture doc DONE        ○ Firmware patches
-  ✅ Integration builds          ► Implementation plan DONE     ○ Range validation
-  ✅ 5m data collected           ► ConvoyEnv updates PENDING    ○ Clean drive data
-                                 ► DeepSetPolicy PENDING        │
-[ESP-NOW Emulator]               ► n-peer emulator PENDING      │
-  ✅ 84/84 tests passing                                        │
-  ✅ Params loaded                                              ▼
-                                                               [Phase 4: Training]
-                                                                 ○ Deep Sets training
-                                                                 ○ TFLite (split model)
-                                                                 ○ ESP32 deployment
+[Phase 1: ConvoyEnv Dict Obs] → [Phase 2: Deep Sets Policy] → [Phase 3: Emulator Fix]
+  ✅ COMPLETE                     ✅ COMPLETE                    ✅ COMPLETE
+
+[Phase 4: Training Pipeline]
+  ✅ COMPLETE (dataset + eval harness verified)
+
+                              ► [Phase 5: Firmware Migration]
+                                ○ ESP-NOW LR Mode Migration
+                                ○ Production training run (long horizon)
 ```
 
 ---
+
+## Recent Achievements (Jan 15, 2026)
+
+- ConvoyEnv reset now waits for V001 spawn with a timeout to avoid TraCI "Vehicle not known" failures.
+- Scenario generator sorts route files by depart time; dataset_v1 regenerated to satisfy SUMO ordering.
+- Dataset-based training smoke run completed with evaluation output saved to `ml/models/runs/`.
 
 ## Key Files Location
 
@@ -85,7 +87,7 @@ COMPLETED                       CURRENT                         PLANNED
 |----------|---------|----------|
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
 | `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps | **HIGH - START HERE** |
-| `docs/10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md` | ConvoyEnv implementation (needs update for Dict obs) | HIGH |
+| `docs/10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md` | ConvoyEnv implementation (Dict obs COMPLETE) | MEDIUM |
 | `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | Next firmware change after Deep Sets | MEDIUM |
 
 ### Completed Work (REFERENCE)
@@ -126,7 +128,7 @@ COMPLETED                       CURRENT                         PLANNED
 4. Must patch all three files: EspNowTransport.cpp, sender_main.cpp, reflector_main.cpp
 
 **What this means for AI agents:**
-- DO NOT apply LR mode patches yet (wait for ConvoyEnv validation)
+- DO NOT apply LR mode patches yet (wait for firmware migration completion)
 - DO reference `ESPNOW_LONG_RANGE_MODE_MIGRATION.md` when firmware changes are needed
 
 ---
@@ -141,11 +143,13 @@ COMPLETED                       CURRENT                         PLANNED
    - Use DeepSetPolicy, NOT MlpPolicy
    - DO NOT hardcode V002/V003 - handle n peers dynamically
    - Use max pooling for permutation invariance
+   - Ensure route files are sorted by depart time (SUMO ignores unsorted entries)
 
 ### If asked to work on ConvoyEnv:
-1. The observation space must change from `Box(11,)` to `Dict`
-2. EmulatorESPNOW must support n peers (not just V002/V003)
-3. See `N_ELEMENT_IMPLEMENTATION_PLAN.md` Phase 1 and 2
+1. Observation space is already `Dict`; do not revert to `Box(11,)`
+2. EmulatorESPNOW supports n peers; avoid hardcoded V002/V003 logic
+3. Reset now waits for V001 spawn; keep the startup wait/timeout
+4. See `N_ELEMENT_IMPLEMENTATION_PLAN.md` Phase 1 and 2
 
 ### If asked to work on firmware:
 1. ML inference must loop over n peers with shared encoder
@@ -166,8 +170,9 @@ COMPLETED                       CURRENT                         PLANNED
 |-----------|-------|--------|
 | RTT Firmware | 42/42 | ✅ Complete |
 | ESP-NOW Emulator | 84/84 | ✅ Complete |
-| ConvoyEnv | 0/80 | ► In Progress |
-| **Total** | **126/206** | **61% Complete** |
+| ConvoyEnv (Dict Obs) | 74/74 | ✅ Complete |
+| Deep Sets Policy | 6/6 | ✅ Complete |
+| **Total** | **206/206** | **100% Complete** |
 
 ---
 
@@ -181,5 +186,5 @@ COMPLETED                       CURRENT                         PLANNED
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Maintained By:** Bookkeeper Agent

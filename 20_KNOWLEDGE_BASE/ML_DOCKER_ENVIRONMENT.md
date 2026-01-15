@@ -1,6 +1,7 @@
 # ML Docker Environment Guide
 
 **Created:** January 13, 2026
+**Last Updated:** January 15, 2026
 **Purpose:** Document the Docker-based ML training environment for ConvoyEnv.
 
 ---
@@ -47,6 +48,16 @@ docker build -t roadsense-ml:latest .
 
 # Run GUI demo (requires display)
 ./run_docker.sh demo
+```
+
+### Smoke Training (Fast)
+
+For quick verification runs, set a small rollout length so PPO doesn't
+buffer a full 2048-step rollout:
+
+```bash
+./run_docker.sh train --sumo_cfg ml/scenarios/base/scenario.sumocfg \
+    --total_timesteps 100 --n_steps 32 --eval_episodes 1
 ```
 
 ---
@@ -132,6 +143,7 @@ Requires XQuartz:
 **Added by Dockerfile:**
 - Python virtual environment at `/opt/venv`
 - gymnasium, stable-baselines3, PyTorch (~800MB)
+- tensorboard (required for training logs)
 - numpy, scipy, matplotlib, pytest
 
 **Final Image Size:** ~6-7GB
@@ -172,6 +184,17 @@ Integration tests require the Docker container. Run via:
 ```bash
 ./run_docker.sh integration
 ```
+
+### Training fails with "tensorboard is not installed"
+
+`train_convoy.py` logs to TensorBoard by default. Ensure `tensorboard` is included
+in `ml/requirements.txt` and rebuild the Docker image.
+
+### Training fails with "Vehicle 'V001' is not known"
+
+SUMO ignores unsorted route files and can drop early-departing vehicles (often V001).
+If you see a warning like `Route file should be sorted by departure time`, regenerate
+the dataset with sorted routes (the generator now enforces this) and retry training.
 
 ---
 

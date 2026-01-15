@@ -56,6 +56,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [hw_firmware_migration_plan.md](../10_PLANS_ACTIVE/hw_firmware_migration_plan.md) | Hardware Firmware Migration Plan |
 | [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Cloud Training Pipeline Proposal (Draft) |
 | [CLOUD_TRAINING_PIPELINE_VERDICT.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Cloud Training Pipeline Verdict (Approved with Conditions) |
+| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | **Cloud Training AWS Execution Plan** ► NEW |
 
 ### RTT Implementation (Subdirectory)
 | Document | Display Name |
