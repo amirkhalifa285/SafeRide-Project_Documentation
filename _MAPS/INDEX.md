@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** January 13, 2026
-**Total Documents:** 47
+**Last Updated:** January 15, 2026
+**Total Documents:** 59
 
 ---
 
@@ -13,10 +13,12 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ✅ RTT Characterization: COMPLETE (valid 5m data)                          │
 │  ✅ ESP-NOW Emulator: COMPLETE (84/84 tests)                                │
-│  ⚠️  ARCHITECTURE CHANGE: Fixed obs space → Deep Sets (variable n peers)    │
-│  ► n-Element Implementation: IN PROGRESS (see N_ELEMENT_IMPLEMENTATION_PLAN)│
-│  ○ ConvoyEnv Update: BLOCKED (waiting for Deep Sets changes)                │
-│  ○ LR Mode Migration: PLANNED (after pipeline validation)                   │
+│  ✅ Phase 1 - ConvoyEnv Dict Space: COMPLETE (74/74 tests) - Jan 15, 2026  │
+│  ✅ Phase 2 - Deep Sets Policy Network: COMPLETE (6/6 tests) - Jan 15, 2026│
+│  ✅ Phase 3 - Emulator Causality Fix: COMPLETE - Jan 15, 2026              │
+│  ✅ Phase 4 - Training Pipeline: COMPLETE - Jan 15, 2026                    │
+│  ► Phase 5 - Firmware Migration: NEXT PRIORITY                              │
+│  ○ LR Mode Migration: PLANNED (after firmware port)                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -41,7 +43,7 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (8 files)
+## 10_PLANS_ACTIVE (24 files)
 
 Current ongoing plans, TODOs, and work-in-progress execution plans.
 
@@ -52,6 +54,8 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md](../10_PLANS_ACTIVE/ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md) | ESP-NOW Network Characterization Implementation Guide |
 | [ESPNOW_LONG_RANGE_MODE_MIGRATION.md](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) | ESP-NOW LR Mode Migration Plan (extends range) |
 | [hw_firmware_migration_plan.md](../10_PLANS_ACTIVE/hw_firmware_migration_plan.md) | Hardware Firmware Migration Plan |
+| [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Cloud Training Pipeline Proposal (Draft) |
+| [CLOUD_TRAINING_PIPELINE_VERDICT.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Cloud Training Pipeline Verdict (Approved with Conditions) |
 
 ### RTT Implementation (Subdirectory)
 | Document | Display Name |
@@ -60,11 +64,31 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [RTT_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/RTT_Implementation/RTT_PROGRESS_TRACKER.md) | RTT Firmware TDD Progress Tracker ✅ CHARACTERIZATION COMPLETE |
 | [RTT_TEST_SUITE_SUMMARY.md](../10_PLANS_ACTIVE/RTT_Implementation/RTT_TEST_SUITE_SUMMARY.md) | RTT Firmware TDD Test Suite Summary |
 
-### ConvoyEnv Implementation (Subdirectory) - CURRENT FOCUS
+### N-Element Implementation (Subdirectory) - CURRENT FOCUS
+| Document | Display Name |
+|----------|--------------|
+| [N_ELEMENT_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/N_Element_Implementation/N_ELEMENT_PROGRESS_TRACKER.md) | **N-Element Progress Tracker** ► Phase 4 COMPLETE |
+| [PHASE_1_SPEC.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_SPEC.md) | Phase 1: ConvoyEnv Dict Observation Space |
+| [PHASE_1_BUILDER_REPORT.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_BUILDER_REPORT.md) | Phase 1 Builder Report |
+| [PHASE_1_REVIEW.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_REVIEW.md) | Phase 1 Review - **APPROVED** |
+| [PHASE_2_SPEC.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_SPEC.md) | Phase 2: Deep Sets Policy Network |
+| [PHASE_2_BUILDER_REPORT.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_BUILDER_REPORT.md) | Phase 2 Builder Report |
+| [PHASE_2_REVIEW.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_REVIEW.md) | Phase 2 Review - **APPROVED** |
+| [PHASE_3_4_SPEC.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_SPEC.md) | Phase 3 & 4: Causality Fix & Training Pipeline |
+| [PHASE_3_4_BUILDER_REPORT.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_BUILDER_REPORT.md) | Phase 3 & 4 Builder Report |
+| [PHASE_3_4_REVIEW.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) | Phase 3 & 4 Review - **APPROVED** |
+
+### ConvoyEnv Implementation (Subdirectory)
 | Document | Display Name |
 |----------|--------------|
 | [CONVOY_ENV_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_IMPLEMENTATION_PLAN.md) | ConvoyEnv Gymnasium Implementation Plan |
-| [CONVOY_ENV_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md) | **ConvoyEnv Progress Tracker** ► READY TO BEGIN (using 5m emulator params) |
+| [CONVOY_ENV_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md) | ConvoyEnv Progress Tracker (Phase 7 Complete) |
+
+### Cloud Training Automation (Subdirectory)
+| Document | Display Name |
+|----------|--------------|
+| [IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AUTOMATION/IMPLEMENTATION_PLAN.md) | Cloud Training Automation Implementation Plan |
+| [PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AUTOMATION/PROGRESS_TRACKER.md) | Cloud Training Automation Progress Tracker |
 
 ---
 
@@ -151,10 +175,14 @@ Implemented/completed plans, approved code reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES (In Order)
-1. **n-Element Deep Sets Architecture** - [Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) | [Implementation Plan](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) ► CRITICAL
-2. **ConvoyEnv Update** - Must implement Dict observation space with variable peers
-3. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (After Deep Sets validated)
-4. **Clean Drive Data** - Collect with LR mode for production training
+1. **Phase 5: Firmware Migration** - Port Deep Sets inference to ESP32 ► NEXT
+2. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (After firmware port)
+3. **Production Training** - Full training run with validated pipeline
+
+### RECENTLY COMPLETED
+- ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)
+- ✅ **Phase 2: Deep Sets Policy Network** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_REVIEW.md) APPROVED (Jan 15, 2026)
+- ✅ **Phase 1: ConvoyEnv Dict Space** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_REVIEW.md) APPROVED (Jan 15, 2026)
 
 ### ESP-NOW Emulator
 - [Design](../00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md)

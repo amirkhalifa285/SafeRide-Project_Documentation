@@ -3,7 +3,7 @@
 **Tracking Document:** `N_ELEMENT_PROGRESS_TRACKER.md`
 **Parent Plan:** `../N_ELEMENT_IMPLEMENTATION_PLAN.md`
 **Architecture:** `../../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md`
-**Status:** 🟡 IN PROGRESS
+**Status:** 🟢 Phase 3 & 4 COMPLETE (2026-01-15) — Training Pipeline Ready
 
 ---
 
@@ -17,67 +17,111 @@ For every task below, the **BUILDER** must follow this sequence:
 
 ---
 
-## Phase 1: ConvoyEnv & Observation Space (📍 CURRENT)
+## Phase 1: ConvoyEnv & Observation Space ✅ COMPLETE
 
 **Spec:** `PHASE_1_SPEC.md`
+**Builder Report:** `PHASE_1_BUILDER_REPORT.md`
+**Review:** `PHASE_1_REVIEW.md` — **APPROVED** (2026-01-15)
 **Goal:** Convert `ConvoyEnv` from fixed `Box(11,)` to `Dict` space with variable peers.
 
-- [ ] **1.1 Test Scaffolding**
-    - [ ] Create `ml/tests/test_n_element_env.py`
-    - [ ] Test `env.reset()` returns `Dict` keys: `ego`, `peers`, `peer_mask`
-    - [ ] Test `env.observation_space` structure matches architecture
+- [x] **1.1 Test Scaffolding**
+    - [x] Create `ml/tests/unit/test_n_element_env.py`
+    - [x] Test `env.reset()` returns `Dict` keys: `ego`, `peers`, `peer_mask`
+    - [x] Test `env.observation_space` structure matches architecture
 
-- [ ] **1.2 Observation Builder Update**
-    - [ ] Modify `ml/envs/observation_builder.py` class
-    - [ ] Implement `build(ego, peers_list)` -> `Dict`
-    - [ ] Implement normalization and relative coordinate transformation
-    - [ ] Verify `peer_mask` correctly identifies valid vs padded slots
+- [x] **1.2 Observation Builder Update**
+    - [x] Modify `ml/envs/observation_builder.py` class
+    - [x] Implement `build(ego_state, peer_observations, ego_pos)` -> `Dict`
+    - [x] Implement normalization and relative coordinate transformation
+    - [x] Verify `peer_mask` correctly identifies valid vs padded slots
 
-- [ ] **1.3 ConvoyEnv Integration**
-    - [ ] Update `ml/envs/convoy_env.py` observation space definition
-    - [ ] Update `_step_espnow()` to loop over `traci.vehicle.getIDList()` (ignoring ego)
-    - [ ] Remove hardcoded `V002`, `V003` references
-    - [ ] Pass variable peer list to `ObservationBuilder`
+- [x] **1.3 ConvoyEnv Integration**
+    - [x] Update `ml/envs/convoy_env.py` observation space definition
+    - [x] Update `_step_espnow()` to loop over `traci.vehicle.getIDList()` (ignoring ego)
+    - [x] Remove hardcoded `V002`, `V003` references
+    - [x] Pass variable peer list to `ObservationBuilder`
 
----
+- [x] **1.4 Post-Review Fix** (2026-01-15)
+    - [x] Added `clear()` method to `ESPNOWEmulator` for API consistency
+    - [x] Simplified `convoy_env.py` to use `emulator.clear()` directly
 
-## Phase 2: ESP-NOW Emulator Updates
-
-**Goal:** Remove hardcoded vehicle IDs from the network emulation layer.
-
-- [ ] **2.1 Emulator Refactoring**
-    - [ ] Create test case: `ml/tests/test_emulator_n_peers.py` with 3+ peers
-    - [ ] Modify `ml/espnow_emulator/espnow_emulator.py`
-    - [ ] Replace `['V002', 'V003']` loop with dynamic dictionary tracking
-    - [ ] Implement `get_all_peer_observations()`
-    - [ ] Verify staleness/age logic works for dynamic peers
+**Tests:** 74/74 unit tests pass
 
 ---
 
-## Phase 3: Deep Sets Policy Network
+## Phase 2: Deep Sets Policy Network ✅ COMPLETE
 
+**Spec:** `PHASE_2_SPEC.md`
+**Builder Report:** `PHASE_2_BUILDER_REPORT.md`
+**Review:** `PHASE_2_REVIEW.md` — **APPROVED** (2026-01-15)
 **Goal:** Implement the PyTorch neural network that handles the set-based input.
 
-- [ ] **3.1 Custom Feature Extractor**
-    - [ ] Create `ml/policies/deep_set_policy.py`
-    - [ ] Implement `DeepSetFeatureExtractor` (SB3 compatible)
-    - [ ] Test: Permutation invariance (swapping peer order = same output)
-    - [ ] Test: Masking (adding zero-padded peers = same output)
+- [x] **2.1 Custom Feature Extractor**
+    - [x] Create `ml/models/deep_set_extractor.py`
+    - [x] Implement `DeepSetExtractor` (SB3 `BaseFeaturesExtractor` subclass)
+    - [x] Shared peer encoder MLP (6→32→32)
+    - [x] Masked max pooling over peer embeddings
+    - [x] Handle n=0 case (all peers masked)
+    - [x] Test: `features_dim == 36` (32 peer latent + 4 ego)
 
-- [ ] **3.2 Policy Integration**
-    - [ ] Create `create_deep_set_policy_kwargs()` helper
-    - [ ] Verify shape compatibility with SB3 PPO
+- [x] **2.2 TDD Tests**
+    - [x] Create `ml/tests/unit/test_deep_set_extractor.py`
+    - [x] Test: Output shape is `(batch, 36)`
+    - [x] Test: Handles zero peers (no NaN/Inf)
+    - [x] Test: Handles max peers (8 valid)
+    - [x] Test: Permutation invariant
+    - [x] Test: Works with SB3 PPO
+
+- [x] **2.3 Policy Integration**
+    - [x] Verify `MultiInputPolicy` + `DeepSetExtractor` works
+    - [x] Verify `model.predict()` returns valid actions
+
+**Tests:** 6/6 unit tests pass
 
 ---
 
-## Phase 4: Training Pipeline
+## Phase 3: Emulator Causality Fix ✅ COMPLETE
 
+**Spec:** `PHASE_3_4_SPEC.md`
+**Builder Report:** `PHASE_3_4_BUILDER_REPORT.md`
+**Review:** `PHASE_3_4_REVIEW.md` — **APPROVED** (2026-01-15)
+**Goal:** Fix Sim2Real causality violation where `ConvoyEnv` used future messages immediately.
+
+- [x] **3.1 Emulator Updates**
+    - [x] Modify `ml/espnow_emulator/espnow_emulator.py`
+    - [x] Implement `sync_and_get_messages(current_time_ms)`
+    - [x] Ensure it processes `pending_messages` correctly
+
+- [x] **3.2 ConvoyEnv Causality Fix**
+    - [x] Modify `ml/envs/convoy_env.py`
+    - [x] Refactor `_step_espnow` to separate Transmit loop from Receive logic
+    - [x] Use `sync_and_get_messages()` to get only physically arrived messages
+    - [x] Verify `age_ms` calculation is correct
+
+---
+
+## Phase 4: Training Pipeline ✅ COMPLETE
+
+**Spec:** `PHASE_3_4_SPEC.md`
+**Builder Report:** `PHASE_3_4_BUILDER_REPORT.md`
+**Review:** `PHASE_3_4_REVIEW.md` — **APPROVED** (2026-01-15)
 **Goal:** End-to-end training loop validation.
 
-- [ ] **4.1 Training Script**
-    - [ ] Update `ml/training/train_convoy.py` to use `MultiInputPolicy`
-    - [ ] Verify training starts and runs for 1000 steps without error
-    - [ ] Verify TensorBoard logging
+- [x] **4.1 Training Script**
+    - [x] Create `ml/training/train_convoy.py`
+    - [x] Implement PPO setup with `MultiInputPolicy`
+    - [x] Configure `DeepSetExtractor` as custom feature extractor
+    - [x] Use `create_deep_set_policy_kwargs(peer_embed_dim=32)`
+
+- [x] **4.2 Integration Test**
+    - [x] Create `ml/tests/integration/test_training_pipeline.py`
+    - [x] Verify SUMO availability check uses env var (Docker compatible)
+    - [x] Verify model saving works
+
+- [x] **4.3 Post-Review Fixes** (2026-01-15)
+    - [x] Replaced `os.system()` SUMO check with `SUMO_AVAILABLE` env var
+    - [x] Added `sync_and_get_messages` test case to `test_causality_fix.py`
+    - [x] Added `ml/training/__init__.py` for conventional packaging
 
 ---
 
@@ -104,4 +148,7 @@ For every task below, the **BUILDER** must follow this sequence:
 
 | Date | Phase | Tests Passed | Notes |
 |------|-------|--------------|-------|
-|      |       |              |       |
+| 2026-01-15 | Phase 1 | 74/74 | ConvoyEnv Dict observation space - APPROVED |
+| 2026-01-15 | Phase 2 | 6/6 | Deep Sets Policy Network - APPROVED |
+| 2026-01-15 | Phase 3 & 4 | All | Causality fix + Training pipeline - APPROVED |
+| 2026-01-15 | Phase 3 & 4 | 90/90 | **Final Verification:** Fixed Docker mount, `ml/__init__.py`, and SUMO accel bug. Pipeline runs end-to-end. |
