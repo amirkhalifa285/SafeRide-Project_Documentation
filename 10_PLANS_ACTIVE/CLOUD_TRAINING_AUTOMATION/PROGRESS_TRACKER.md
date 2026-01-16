@@ -3,7 +3,7 @@
 Status: Active
 Owner: Planner
 Goal: One-button training pipeline (generate -> augment -> train -> eval -> save artifacts)
-Last Updated: January 15, 2026
+Last Updated: January 16, 2026
 
 ## Scope
 - Local single-command pipeline that can be triggered on demand.
@@ -33,8 +33,14 @@ Last Updated: January 15, 2026
 | 1 | Scenario generator + manifest | **COMPLETE** | [PHASE_1_SPEC.md](PHASE_1_SPEC.md) | - | [APPROVED](PHASE_1_REVIEW.md) |
 | 2 | Scenario selection + SUMO reload | **COMPLETE** | [PHASE_2_SPEC.md](PHASE_2_SPEC.md) | - | [APPROVED](PHASE_2_REVIEW.md) |
 | 3 | Training CLI + evaluation harness | **COMPLETE** | [PHASE_3_SPEC.md](PHASE_3_SPEC.md) | - | - |
-| 4 | One-button runner + artifact packaging | **IN PROGRESS** | [AWS_EXECUTION_PLAN](../CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | - | - |
-| 5 | Cloud handoff (optional) | NOT STARTED | - | - | - |
+| 4 | One-button runner + artifact packaging | **COMPLETE** | [AWS_EXECUTION_PLAN](../CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | - | - |
+| 5 | Cloud handoff | **IN PROGRESS** | [aws_training_agent_prompt.md](../../../aws_training_agent_prompt.md) | - | - |
+
+### Phase 5: First Cloud Run (Jan 16, 2026)
+- Instance: c6i.xlarge (On-Demand) in il-central-1
+- Run ID: `cloud_prod_001`
+- Status: **TRAINING** (5M timesteps, ~24-48 hours expected)
+- Results: `s3://saferide-training-results/cloud_prod_001/`
 
 ## Phase 0 Invariants (Locked)
 

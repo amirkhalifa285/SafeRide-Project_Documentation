@@ -1,9 +1,20 @@
 # AWS Cloud Training Execution Plan (RoadSense V2V)
 
-**Status:** PLANNED
+**Status:** FIRST RUN IN PROGRESS
 **Goal:** Run full RL training (5M+ steps) on AWS while maintaining a strict $20/month budget.
 **Architect:** Master Architect (Interactive CLI)
-**Last Updated:** January 15, 2026
+**Last Updated:** January 16, 2026
+
+---
+
+## 🎯 Current Run Status
+
+| Run ID | Instance | Started | Status |
+|--------|----------|---------|--------|
+| cloud_prod_001 | c6i.xlarge (On-Demand) | Jan 16, 2026 | **TRAINING** |
+
+**Expected completion:** ~24-48 hours from start.
+**Results location:** `s3://saferide-training-results/cloud_prod_001/`
 
 ---
 
@@ -52,29 +63,45 @@ Launch an EC2 Spot Instance with the following **User Data** script:
 
 ```bash
 #!/bin/bash
-# 1. Environment Setup
-apt-get update && apt-get install -y docker.io awscli
-systemctl start docker
+set -euo pipefail
+exec > /var/log/user-data.log 2>&1
 
-# 2. Code Acquisition
-# Replace <PAT> with your GitHub token
-git clone https://<PAT>@github.com/amirkhalifa/roadsense-v2v.git /home/ubuntu/work
+export DEBIAN_FRONTEND=noninteractive
+export AWS_DEFAULT_REGION=il-central-1
+
+# 1. Environment Setup
+apt-get update && apt-get install -y docker.io awscli git
+systemctl enable --now docker
+
+# 2. Code Acquisition (replace <PAT> locally before pasting)
+git clone https://<PAT>@github.com/amirkhalifa285/SafeRide.git /home/ubuntu/work
 cd /home/ubuntu/work/ml
 
-# 3. Training Execution
+# 3. Dataset Generation
+./run_docker.sh generate \
+    --base_dir ml/scenarios/base \
+    --output_dir ml/scenarios/datasets/dataset_v1 \
+    --seed 42 --train_count 80 --eval_count 20 \
+    --emulator_params ml/espnow_emulator/emulator_params_5m.json
+
+# 4. Training Execution
+# CRITICAL: --output_dir uses CONTAINER path (/work/...), not host path
 ./run_docker.sh train \
     --dataset_dir ml/scenarios/datasets/dataset_v1 \
     --emulator_params ml/espnow_emulator/emulator_params_5m.json \
     --total_timesteps 5000000 \
     --run_id cloud_prod_001 \
-    --output_dir /home/ubuntu/work/results
+    --output_dir /work/results \
+    --skip_eval
 
-# 4. Artifact Archival
-aws s3 cp /home/ubuntu/work/results s3://roadsense-training-results/cloud_prod_001 --recursive
+# 5. Artifact Archival (uses HOST path - maps to container's /work/results)
+aws s3 cp /home/ubuntu/work/results s3://saferide-training-results/cloud_prod_001 --recursive
 
-# 5. Self-Termination
+# 6. Self-Termination
 shutdown -h now
 ```
+
+> **Path Mapping Note:** The `run_docker.sh` script mounts host `/home/ubuntu/work` to container `/work`. Arguments passed to Python scripts run INSIDE the container, so use container paths for `--output_dir`. The S3 upload runs OUTSIDE the container, so use host paths.
 
 ---
 
@@ -93,3 +120,28 @@ shutdown -h now
   - *Mitigation:* `shutdown -h now` is hardcoded in the script. AWS Budgets will alert at 80% of $15.
 - **Git Auth Failure:** Token expires.
   - *Mitigation:* Test clone command locally with the PAT before cloud launch.
+- **SSH Access Issues:** AWS "My IP" auto-detection often fails.
+  - *Mitigation:* Use `curl -4 ifconfig.me` to get actual public IP for security group rules.
+
+---
+
+## 📝 Lessons Learned (Jan 16, 2026 - First Run)
+
+### Docker Path Mapping Bug (CRITICAL)
+**Problem:** Initial script used `--output_dir /home/ubuntu/work/results` (host path) for training, but training runs INSIDE the Docker container where that path doesn't exist.
+
+**Root Cause:** `run_docker.sh` mounts `$REPO_ROOT:/work`, so container sees `/work` as root, not `/home/ubuntu/work`.
+
+**Fix:** Use container paths for arguments passed to Python scripts:
+- ❌ `--output_dir /home/ubuntu/work/results`
+- ✅ `--output_dir /work/results`
+
+### SSH Security Group
+**Problem:** AWS Console "My IP" auto-detection returned wrong IP (due to VPN/CGNAT/proxy).
+
+**Fix:** Manually determine IP with `curl -4 ifconfig.me` and use that exact IP/32 in security group.
+
+### Instance Type Decision
+**Decision:** Used On-Demand instead of Spot for first run.
+
+**Rationale:** Spot can be interrupted mid-training. For a critical first validation run, On-Demand (~$0.20/hr) is worth the extra cost for reliability. Consider Spot for subsequent runs where interruption is acceptable.

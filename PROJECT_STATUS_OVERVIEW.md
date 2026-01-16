@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 15, 2026
+**Last Updated:** January 16, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -55,18 +55,29 @@ COMPLETED                       CURRENT                         PLANNED
 [Phase 1: ConvoyEnv Dict Obs] → [Phase 2: Deep Sets Policy] → [Phase 3: Emulator Fix]
   ✅ COMPLETE                     ✅ COMPLETE                    ✅ COMPLETE
 
-[Phase 4: Training Pipeline]
-  ✅ COMPLETE (dataset + eval harness verified)
+[Phase 4: Training Pipeline]   [Cloud Training: Run 001]
+  ✅ COMPLETE                     ✅ COMPLETE (80% success)
 
                               ► [Phase 5: Firmware Migration]
                                 ○ ESP-NOW LR Mode Migration
-                                ○ Production training run (long horizon)
+                                ○ EC2 AMI Creation (infra)
 ```
 
 ---
 
-## Recent Achievements (Jan 15, 2026)
+## Recent Achievements
 
+### Jan 16, 2026 - Cloud Training Run 001 COMPLETE
+- **Training completed:** 5M timesteps on c6i.xlarge (il-central-1)
+- **Results:**
+  - Reward: -478 → +478 (model learned successfully)
+  - Evaluation: **80% success rate** (16/20 episodes)
+  - 4/5 eval scenarios pass consistently; 1 edge case identified (late-spawn)
+- **Model still improving** at 5M steps - consider extended run
+- **Artifacts:** `s3://saferide-training-results/cloud_prod_001/`
+- **Details:** See `20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md`
+
+### Jan 15, 2026
 - ConvoyEnv reset now waits for V001 spawn with a timeout to avoid TraCI "Vehicle not known" failures.
 - Scenario generator sorts route files by depart time; dataset_v1 regenerated to satisfy SUMO ordering.
 - Dataset-based training smoke run completed with evaluation output saved to `ml/models/runs/`.
@@ -87,7 +98,7 @@ COMPLETED                       CURRENT                         PLANNED
 |----------|---------|----------|
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
 | `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps | **HIGH - START HERE** |
-| `docs/10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md` | ConvoyEnv implementation (Dict obs COMPLETE) | MEDIUM |
+| `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Create reusable training AMI | **HIGH - NEXT SESSION** |
 | `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | Next firmware change after Deep Sets | MEDIUM |
 
 ### Completed Work (REFERENCE)
@@ -186,5 +197,5 @@ COMPLETED                       CURRENT                         PLANNED
 
 ---
 
-**Document Version:** 1.1
+**Document Version:** 1.2
 **Maintained By:** Bookkeeper Agent

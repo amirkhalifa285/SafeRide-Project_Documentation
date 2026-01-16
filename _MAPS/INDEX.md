@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** January 15, 2026
-**Total Documents:** 59
+**Last Updated:** January 16, 2026
+**Total Documents:** 61
 
 ---
 
@@ -17,7 +17,9 @@
 │  ✅ Phase 2 - Deep Sets Policy Network: COMPLETE (6/6 tests) - Jan 15, 2026│
 │  ✅ Phase 3 - Emulator Causality Fix: COMPLETE - Jan 15, 2026              │
 │  ✅ Phase 4 - Training Pipeline: COMPLETE - Jan 15, 2026                    │
+│  ✅ Cloud Training Run 001: COMPLETE (80% success) - Jan 16, 2026          │
 │  ► Phase 5 - Firmware Migration: NEXT PRIORITY                              │
+│  ○ EC2 AMI Creation: PLANNED (next session)                                 │
 │  ○ LR Mode Migration: PLANNED (after firmware port)                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -25,6 +27,7 @@
 **Start Here:**
 - **CRITICAL:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
 - Implementation: [n-Element Implementation Plan](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md)
+- Training Results: [Cloud Run 001 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) ✅ 80% SUCCESS
 - Next firmware change: [ESP-NOW LR Mode Migration](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md)
 
 ---
@@ -43,7 +46,7 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (24 files)
+## 10_PLANS_ACTIVE (25 files)
 
 Current ongoing plans, TODOs, and work-in-progress execution plans.
 
@@ -56,7 +59,8 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [hw_firmware_migration_plan.md](../10_PLANS_ACTIVE/hw_firmware_migration_plan.md) | Hardware Firmware Migration Plan |
 | [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Cloud Training Pipeline Proposal (Draft) |
 | [CLOUD_TRAINING_PIPELINE_VERDICT.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Cloud Training Pipeline Verdict (Approved with Conditions) |
-| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | **Cloud Training AWS Execution Plan** ► NEW |
+| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Cloud Training AWS Execution Plan ✅ RUN 001 COMPLETE |
+| [EC2_AMI_CREATION_PLAN.md](../10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md) | **EC2 AMI Creation Plan** ► NEXT SESSION |
 
 ### RTT Implementation (Subdirectory)
 | Document | Display Name |
@@ -93,7 +97,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 
 ---
 
-## 20_KNOWLEDGE_BASE (12 files)
+## 20_KNOWLEDGE_BASE (13 files)
 
 How-to guides, troubleshooting, workflows, and reusable reference notes.
 
@@ -101,6 +105,7 @@ NOTE: SUMO FILES HAVE BEEN MOVED TO A SEPARATE FOLDER.
 
 | Document | Display Name |
 |----------|--------------|
+| [CLOUD_TRAINING_RUN_001_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) | **Cloud Training Run 001 Results** ► 80% SUCCESS (Jan 16, 2026) |
 | [AI_AGENT_CHECKLIST.md](../20_KNOWLEDGE_BASE/AI_AGENT_CHECKLIST.md) | AI Agent Pre-Implementation Checklist |
 | [DATALOGGER_MODIFICATION_PROMPT.md](../20_KNOWLEDGE_BASE/DATALOGGER_MODIFICATION_PROMPT.md) | DataLogger Modification Prompt |
 | [DATALOGGER_VALIDATION_TEST.md](../20_KNOWLEDGE_BASE/DATALOGGER_VALIDATION_TEST.md) | DataLogger Validation Test Guide (At Home) |
@@ -211,4 +216,4 @@ Implemented/completed plans, approved code reviews, and historical documents.
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 1.1
