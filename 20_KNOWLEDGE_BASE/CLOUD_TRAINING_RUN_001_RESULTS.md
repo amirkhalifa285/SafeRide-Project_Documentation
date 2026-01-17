@@ -57,6 +57,43 @@ All 4 failures occurred on `eval_001` - a scenario with late vehicle spawn (V002
 
 ---
 
+## ⚠️ POST-MORTEM (Jan 17, 2026): Fixed n=2 Training Data
+
+### Issue Discovered
+
+**All 25 scenarios in dataset_v1 contained exactly 3 vehicles (V001 + V002 + V003).**
+
+This means the model was trained with **constant n=2 peers** for the entire 5M timesteps. The Deep Sets architecture is designed to handle variable n, but it never experienced:
+- n=0 (isolated driving)
+- n=1 (single peer)
+- n=3+ (multiple peers)
+
+### Impact Assessment
+
+| Aspect | Status |
+|--------|--------|
+| Architecture correctness | ✅ Valid - Deep Sets handles variable n |
+| Permutation invariance | ✅ Valid - Max pooling works for any n |
+| 80% success rate | ⚠️ Only valid for n=2 scenarios |
+| n≠2 behavior | ❓ Unknown and untested |
+
+### Root Cause
+
+The `monitored_vehicles` field in `emulator_params_5m.json` was set to `["V002", "V003"]`. While this field is **NOT used by ConvoyEnv** (it uses `sync_and_get_messages()` which handles all peers dynamically), the **SUMO scenarios themselves** only defined 3 vehicles.
+
+### Resolution
+
+1. Removed `monitored_vehicles` from emulator params JSON files (misleading, unused)
+2. Added Phase 6 to `N_ELEMENT_IMPLEMENTATION_PLAN.md` with variable-n requirements
+3. **Run 002 must use dataset_v2 with n ∈ {1,2,3,4,5} peers**
+
+### Lesson Learned
+
+> **Training data diversity is as important as architecture correctness.**
+> Deep Sets can handle variable n, but only if trained with variable n.
+
+---
+
 ## Artifacts
 
 | File | Location |
@@ -70,6 +107,9 @@ All 4 failures occurred on `eval_001` - a scenario with late vehicle spawn (V002
 
 ## Next Steps
 
-1. Consider 10M step run to improve edge case handling
-2. Port Deep Sets inference to ESP32 firmware (Phase 5)
-3. Create EC2 AMI to avoid instance setup overhead
+1. **Generate dataset_v2** with variable peer counts n ∈ {1,2,3,4,5}
+2. **Run 002:** 10M timesteps with variable n dataset + evaluation
+3. Port Deep Sets inference to ESP32 firmware (Phase 5)
+4. Create EC2 AMI to avoid instance setup overhead
+
+**See:** `N_ELEMENT_IMPLEMENTATION_PLAN.md` Phase 6 for detailed requirements.

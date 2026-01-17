@@ -17,7 +17,8 @@
 4. [Phase 3: Custom Policy Network](#4-phase-3-custom-policy-network)
 5. [Phase 4: Training Pipeline](#5-phase-4-training-pipeline)
 6. [Phase 5: Firmware Changes](#6-phase-5-firmware-changes)
-7. [Testing Checklist](#7-testing-checklist)
+7. [Phase 6: Production Training Run](#7-phase-6-production-training-run-next) ► **NEXT**
+8. [Testing Checklist](#8-testing-checklist)
 
 ---
 
@@ -701,7 +702,72 @@ void processV2VMessages(MLObservation& obs) {
 
 ---
 
-## 7. Testing Checklist
+## 7. Phase 6: Production Training Run (NEXT)
+
+**Status:** PLANNED - After Firmware Migration
+**Discovered:** January 17, 2026 - Cloud Run 001 post-mortem
+
+### 7.1 Critical Issue: Run 001 Used Fixed n=2
+
+**Problem Identified:**
+- Cloud Training Run 001 (5M timesteps) achieved 80% success
+- **BUT** all 25 scenarios in `dataset_v1` had exactly 3 vehicles (V001, V002, V003)
+- The model was trained with **constant n=2 peers** for the entire run
+- The Deep Sets architecture can handle variable n, but never saw n≠2 during training
+
+**Impact:**
+- Model behavior for n=0 (isolated), n=1, n=3+ is **untested and unpredictable**
+- The 80% success rate is valid but only for n=2 scenarios
+- Not a catastrophic failure (architecture is correct), but training data was homogeneous
+
+### 7.2 Dataset V2 Requirements
+
+**Scenario Generation Workflow:**
+1. **User manually:** Crop real-world map from OpenStreetMap
+2. **User manually:** Import to SUMO NetConvert, create base scenario
+3. **Script:** Augment base scenario with `generate_dataset.py`
+4. **Script MUST vary:**
+   - Number of vehicles per scenario: n ∈ {1, 2, 3, 4, 5} peers (plus ego)
+   - Vehicle parameters (decel, tau, sigma, speedFactor) - already done
+   - Spawn timing jitter - already done
+
+**Generator Changes Required:**
+```python
+# In scenario generator, add vehicle count variation:
+peer_counts = [1, 2, 3, 4, 5]  # Variable number of peers
+for scenario_id, peer_count in enumerate(scenarios):
+    # Generate V001 (ego) + V002..V00{peer_count+1} peers
+    generate_scenario_with_n_peers(peer_count)
+```
+
+### 7.3 Training Run 002 Requirements
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Timesteps | **10,000,000** (10M) | 2x previous run |
+| Evaluation | **Required** | Run eval episodes after training |
+| Dataset | `dataset_v2` | Variable peer counts |
+| Peer counts | n ∈ {1,2,3,4,5} | Diverse training |
+| Checkpoints | Every 500K steps | For recovery |
+| Instance | c6i.xlarge or larger | Same as Run 001 |
+
+**Eval Protocol:**
+- Run 20+ episodes on eval set
+- Report success rate per peer count (n=1, n=2, etc.)
+- Identify any n-specific failure modes
+
+### 7.4 Acceptance Criteria
+
+- [ ] Dataset v2 generated with variable peer counts
+- [ ] At least 4 scenarios per peer count (n=1,2,3,4,5)
+- [ ] Training completes 10M timesteps
+- [ ] Evaluation runs after training
+- [ ] Success rate >70% across ALL peer counts
+- [ ] No catastrophic failure for any specific n
+
+---
+
+## 8. Testing Checklist
 
 ### Phase 1: ConvoyEnv
 - [ ] `env.observation_space` is `Dict` type
@@ -743,6 +809,7 @@ void processV2VMessages(MLObservation& obs) {
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-13 | Amir Khalifa | Initial implementation plan |
+| 1.1 | 2026-01-17 | Claude | Added Phase 6: Production Training Run requirements (variable n) |
 
 ---
 

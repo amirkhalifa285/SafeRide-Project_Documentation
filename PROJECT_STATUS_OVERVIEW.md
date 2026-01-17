@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 16, 2026
+**Last Updated:** January 17, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -56,9 +56,11 @@ COMPLETED                       CURRENT                         PLANNED
   ✅ COMPLETE                     ✅ COMPLETE                    ✅ COMPLETE
 
 [Phase 4: Training Pipeline]   [Cloud Training: Run 001]
-  ✅ COMPLETE                     ✅ COMPLETE (80% success)
+  ✅ COMPLETE                     ✅ COMPLETE (80% success, n=2 only)
 
                               ► [Phase 5: Firmware Migration]
+                              ► [Phase 6: Training Run 002]     ← NEW: Variable n, 10M steps
+                                ○ Dataset v2 with n ∈ {1,2,3,4,5}
                                 ○ ESP-NOW LR Mode Migration
                                 ○ EC2 AMI Creation (infra)
 ```
@@ -67,12 +69,23 @@ COMPLETED                       CURRENT                         PLANNED
 
 ## Recent Achievements
 
+### Jan 17, 2026 - CRITICAL FINDING: Fixed n=2 Training Data
+- **Issue Discovered:** All 25 scenarios in `dataset_v1` had exactly 3 vehicles (V001 + 2 peers)
+- **Impact:** Model trained on constant n=2 for entire 5M timesteps; behavior for n≠2 is untested
+- **Resolution:**
+  - Removed `monitored_vehicles` from emulator params (was misleading, not used by ConvoyEnv)
+  - Added Phase 6 to N_ELEMENT_IMPLEMENTATION_PLAN.md with variable-n requirements
+  - Next training run (Run 002) MUST use variable peer counts n ∈ {1,2,3,4,5}
+- **NOT a catastrophic failure:** Deep Sets architecture is correct and should generalize
+- **Details:** See `N_ELEMENT_IMPLEMENTATION_PLAN.md` Phase 6
+
 ### Jan 16, 2026 - Cloud Training Run 001 COMPLETE
 - **Training completed:** 5M timesteps on c6i.xlarge (il-central-1)
 - **Results:**
   - Reward: -478 → +478 (model learned successfully)
   - Evaluation: **80% success rate** (16/20 episodes)
   - 4/5 eval scenarios pass consistently; 1 edge case identified (late-spawn)
+- **⚠️ CAVEAT:** Model only trained/evaluated with n=2 peers (see Jan 17 finding)
 - **Model still improving** at 5M steps - consider extended run
 - **Artifacts:** `s3://saferide-training-results/cloud_prod_001/`
 - **Details:** See `20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md`
@@ -148,19 +161,31 @@ COMPLETED                       CURRENT                         PLANNED
 
 ### If asked to work on ML/Training:
 1. **READ FIRST:** `DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (critical architecture)
-2. **IMPLEMENT:** `N_ELEMENT_IMPLEMENTATION_PLAN.md` (step-by-step)
+2. **IMPLEMENT:** `N_ELEMENT_IMPLEMENTATION_PLAN.md` (step-by-step, see Phase 6 for next run)
 3. **KEY RULES:**
    - Observation MUST be Dict with variable peers
    - Use DeepSetPolicy, NOT MlpPolicy
    - DO NOT hardcode V002/V003 - handle n peers dynamically
    - Use max pooling for permutation invariance
    - Ensure route files are sorted by depart time (SUMO ignores unsorted entries)
+   - **Training datasets MUST vary peer count** (n ∈ {1,2,3,4,5}), not just vehicle params
+   - **Next run (Run 002):** 10M timesteps with evaluation, variable n dataset
 
 ### If asked to work on ConvoyEnv:
 1. Observation space is already `Dict`; do not revert to `Box(11,)`
 2. EmulatorESPNOW supports n peers; avoid hardcoded V002/V003 logic
 3. Reset now waits for V001 spawn; keep the startup wait/timeout
 4. See `N_ELEMENT_IMPLEMENTATION_PLAN.md` Phase 1 and 2
+
+### If asked to create training scenarios/datasets:
+1. **User manually:** Crop real-world map from OpenStreetMap, import to SUMO (NetConvert)
+2. **User manually:** Create base scenario with route file and sumocfg
+3. **Script:** Use `generate_dataset.py` to augment the base scenario
+4. **CRITICAL:** The generator script MUST vary the number of vehicles per scenario
+   - Generate scenarios with n ∈ {1, 2, 3, 4, 5} peers (plus V001 ego)
+   - Do NOT generate all scenarios with the same vehicle count
+   - Vary vehicle params (decel, tau, sigma, speedFactor) AND vehicle count
+5. See `N_ELEMENT_IMPLEMENTATION_PLAN.md` Phase 6 for requirements
 
 ### If asked to work on firmware:
 1. ML inference must loop over n peers with shared encoder

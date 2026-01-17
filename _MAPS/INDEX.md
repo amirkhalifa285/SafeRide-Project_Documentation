@@ -1,6 +1,6 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** January 16, 2026
+**Last Updated:** January 17, 2026
 **Total Documents:** 61
 
 ---
@@ -17,8 +17,9 @@
 │  ✅ Phase 2 - Deep Sets Policy Network: COMPLETE (6/6 tests) - Jan 15, 2026│
 │  ✅ Phase 3 - Emulator Causality Fix: COMPLETE - Jan 15, 2026              │
 │  ✅ Phase 4 - Training Pipeline: COMPLETE - Jan 15, 2026                    │
-│  ✅ Cloud Training Run 001: COMPLETE (80% success) - Jan 16, 2026          │
+│  ⚠️ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026 (see post-mortem)│
 │  ► Phase 5 - Firmware Migration: NEXT PRIORITY                              │
+│  ► Phase 6 - Training Run 002: 10M steps, variable n - NEW (Jan 17, 2026)  │
 │  ○ EC2 AMI Creation: PLANNED (next session)                                 │
 │  ○ LR Mode Migration: PLANNED (after firmware port)                         │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -26,8 +27,8 @@
 
 **Start Here:**
 - **CRITICAL:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
-- Implementation: [n-Element Implementation Plan](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md)
-- Training Results: [Cloud Run 001 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) ✅ 80% SUCCESS
+- Implementation: [n-Element Implementation Plan](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) ► **See Phase 6 for Run 002**
+- Training Results: [Cloud Run 001 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) ⚠️ 80% success (n=2 only - see post-mortem)
 - Next firmware change: [ESP-NOW LR Mode Migration](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md)
 
 ---
@@ -182,8 +183,8 @@ Implemented/completed plans, approved code reviews, and historical documents.
 
 ### CURRENT PRIORITIES (In Order)
 1. **Phase 5: Firmware Migration** - Port Deep Sets inference to ESP32 ► NEXT
-2. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (After firmware port)
-3. **Production Training** - Full training run with validated pipeline
+2. **Phase 6: Training Run 002** - 10M steps with variable n (n ∈ {1,2,3,4,5}) ► NEW
+3. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (After firmware port)
 
 ### RECENTLY COMPLETED
 - ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)
