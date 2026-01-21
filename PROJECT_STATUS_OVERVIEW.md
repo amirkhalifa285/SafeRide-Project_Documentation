@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 17, 2026
+**Last Updated:** January 19, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -28,8 +28,8 @@ THE n-ELEMENT PROBLEM:
 
 WHAT WE ARE DOING NOW:
   1. Firmware migration: port Deep Sets inference to ESP32 (Phase 5)
-  2. ESP-NOW LR mode migration after firmware port
-  3. Production training runs with longer timesteps + eval coverage
+  2. ESP-NOW LR mode validation (enabled; extended range tests pending)
+  3. Production training runs with longer timesteps + eval coverage (Run 001 was a test run)
 
 KEY DOCUMENTS:
   - Architecture: 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
@@ -56,18 +56,26 @@ COMPLETED                       CURRENT                         PLANNED
   ✅ COMPLETE                     ✅ COMPLETE                    ✅ COMPLETE
 
 [Phase 4: Training Pipeline]   [Cloud Training: Run 001]
-  ✅ COMPLETE                     ✅ COMPLETE (80% success, n=2 only)
+  ✅ COMPLETE                     ✅ COMPLETE (test run; 80% success, n=2 only)
 
                               ► [Phase 5: Firmware Migration]
+                                ○ Phase 5.1 LR mode enabled + max TX power
+                                ○ Channel set to 6 for home testing
+                                ○ Extended range tests pending (10m/15m/20m)
                               ► [Phase 6: Training Run 002]     ← NEW: Variable n, 10M steps
                                 ○ Dataset v2 with n ∈ {1,2,3,4,5}
-                                ○ ESP-NOW LR Mode Migration
                                 ○ EC2 AMI Creation (infra)
 ```
 
 ---
 
 ## Recent Achievements
+
+### Jan 19, 2026 - LR Mode Enabled + Channel 6 Standardized
+- **LR mode enabled:** ESP-NOW LR mode + max TX power applied in transport + RTT firmware
+- **Channel updated:** Default channel set to 6 to avoid home WiFi interference (routers often on 1)
+- **Validation:** Builds + unit tests pass; 5m baseline RTT test passes
+- **Pending:** Extended range tests (10m/15m/20m) before updating emulator params
 
 ### Jan 17, 2026 - CRITICAL FINDING: Fixed n=2 Training Data
 - **Issue Discovered:** All 25 scenarios in `dataset_v1` had exactly 3 vehicles (V001 + 2 peers)
@@ -112,7 +120,7 @@ COMPLETED                       CURRENT                         PLANNED
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
 | `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps | **HIGH - START HERE** |
 | `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Create reusable training AMI | **HIGH - NEXT SESSION** |
-| `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | Next firmware change after Deep Sets | MEDIUM |
+| `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | LR mode validation + range tests | HIGH - VALIDATION |
 
 ### Completed Work (REFERENCE)
 
@@ -141,9 +149,9 @@ COMPLETED                       CURRENT                         PLANNED
 - DO NOT wait for "better" data before building the gym environment
 - DO focus on getting 80/80 ConvoyEnv tests passing
 
-### January 10, 2026: ESP-NOW LR Mode Planned
+### January 19, 2026: ESP-NOW LR Mode Enabled + Channel 6 Default
 
-**Decision:** Plan firmware change to enable WIFI_PROTOCOL_LR after pipeline validated.
+**Decision:** Enable WIFI_PROTOCOL_LR + max TX power and standardize on channel 6 for home testing.
 
 **Rationale:**
 1. Current PCB antenna only works at ~5m (15.7% loss)
@@ -152,8 +160,9 @@ COMPLETED                       CURRENT                         PLANNED
 4. Must patch all three files: EspNowTransport.cpp, sender_main.cpp, reflector_main.cpp
 
 **What this means for AI agents:**
-- DO NOT apply LR mode patches yet (wait for firmware migration completion)
-- DO reference `ESPNOW_LONG_RANGE_MODE_MIGRATION.md` when firmware changes are needed
+- DO flash LR-enabled firmware on all devices (sender/reflector/main)
+- DO keep all ESP-NOW devices on the same channel (default: 6 for home tests)
+- DO complete extended range tests before updating emulator params
 
 ---
 

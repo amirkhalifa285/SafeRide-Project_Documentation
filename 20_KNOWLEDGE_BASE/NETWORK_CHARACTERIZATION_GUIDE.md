@@ -157,6 +157,7 @@ The "stationary" noise measurements produced **195m GPS std** (should be 2-5m) b
 - [ ] **Antennas:** External 2.4GHz dipole or patch antenna on both ESP32s
 - [ ] **TX Power:** Verify `esp_wifi_set_max_tx_power(84)` in firmware
 - [ ] **Route:** Avoid military bases, industrial areas, dense WiFi zones
+- [ ] **WiFi Channel:** Avoid congested home channels (often channel 1); test on 6 or 11 and keep all ESP-NOW devices on the same channel
 - [ ] **Calibration:** 60s parked at start for stationary noise baseline
 - [ ] **Distance Logging:** Have V002 also log GPS to compute inter-vehicle distance
 - [ ] **Target Loss Rate:** Should be 5-20%, not 60%+
