@@ -55,7 +55,7 @@ pip install pandas numpy gymnasium stable-baselines3 sumolib traci
 - `vehicles.rou.xml`: Traffic flow.
 - `ssm.add.xml`: Safety metrics (TTC, DRAC) for labeling.
 
-### Augmentation Script (`augment_scenarios.py`)
+### Augmentation Script (`ml/scripts/gen_scenarios.py`)
 Generates variations of the base `.rou.xml`.
 
 | Parameter | Range | Description |
@@ -66,6 +66,28 @@ Generates variations of the base `.rou.xml`.
 | `minGap` | 1.5 - 4.0 m | Standing distance between cars |
 
 **Output:** `fcd_output.xml` (Floating Car Data) containing perfect X,Y,Speed,Heading.
+
+#### Route + Peer Augmentation (Optional)
+To introduce **route diversity** and **peer-count variation** without lane changes:
+- Define multiple `<route>` IDs in `vehicles.rou.xml` (e.g., `route_main`, `route_alt1`, `route_alt2`).
+- Randomize non-ego routes and optionally drop peers during generation.
+
+Example:
+```bash
+python -m ml.scripts.gen_scenarios \
+  --base_dir /base \
+  --output_dir /output \
+  --seed 42 \
+  --train_count 16 \
+  --eval_count 4 \
+  --route_randomize_non_ego \
+  --peer_drop_prob 0.3 \
+  --min_peers 1
+```
+
+**Notes:**
+- V001 depart time remains fixed at `t=0` (validated).
+- Default behavior remains unchanged unless the new flags are passed.
 
 ---
 

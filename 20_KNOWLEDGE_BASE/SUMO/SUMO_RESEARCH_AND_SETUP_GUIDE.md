@@ -499,6 +499,33 @@ docker run --rm ghcr.io/eclipse-sumo/sumo:main sumo --version
 # Expected: Eclipse SUMO sumo v1_25_0+0604 or newer
 ```
 
+### Fedora Wayland + Docker + GUI (SELinux Enforcing)
+
+For Fedora + Wayland (XWayland) the GUI may fail unless X access and SELinux labels are handled:
+
+```bash
+# Allow local X access
+xhost +local:
+
+# From scenario directory
+docker run --rm \
+  --security-opt label=disable \
+  -e DISPLAY=$DISPLAY \
+  -e QT_X11_NO_MITSHM=1 \
+  -e XAUTHORITY=/tmp/.Xauthority \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v /run/user/1000/.mutter-Xwaylandauth.*:/tmp/.Xauthority:ro \
+  -v $(pwd):/data:Z \
+  -w /data \
+  ghcr.io/eclipse-sumo/sumo:main \
+  sumo-gui -c scenario.sumocfg
+
+# Revoke access after
+xhost -local:
+```
+
+**Note:** `xhost +local:` was required to resolve `FXApp::openDisplay: unable to open display :0` in Docker.
+
 ---
 
 ## Getting Started: Mock Pipeline Exercises

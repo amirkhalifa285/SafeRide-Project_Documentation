@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** January 17, 2026
-**Total Documents:** 61
+**Last Updated:** January 22, 2026
+**Total Documents:** 62
 
 ---
 
@@ -47,17 +47,19 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (25 files)
+## 10_PLANS_ACTIVE (26 files)
 
 Current ongoing plans, TODOs, and work-in-progress execution plans.
 
 | Document | Display Name |
 |----------|--------------|
 | [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | **n-Element Deep Sets Implementation** ► CURRENT PRIORITY |
+| [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) ► NEW |
 | [DATALOGGER_ACCEL_UPDATE.md](../10_PLANS_ACTIVE/DATALOGGER_ACCEL_UPDATE.md) | DataLogger Accelerometer Update for Network Characterization |
 | [ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md](../10_PLANS_ACTIVE/ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md) | ESP-NOW Network Characterization Implementation Guide |
 | [ESPNOW_LONG_RANGE_MODE_MIGRATION.md](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) | ESP-NOW LR Mode Migration Plan (extends range) |
 | [hw_firmware_migration_plan.md](../10_PLANS_ACTIVE/hw_firmware_migration_plan.md) | Hardware Firmware Migration Plan |
+| [QUANTIZATION_DUAL_TRACK_PLAN.md](../10_PLANS_ACTIVE/QUANTIZATION_DUAL_TRACK_PLAN.md) | Quantization Dual-Track Plan (PTQ + QAT) |
 | [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Cloud Training Pipeline Proposal (Draft) |
 | [CLOUD_TRAINING_PIPELINE_VERDICT.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Cloud Training Pipeline Verdict (Approved with Conditions) |
 | [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Cloud Training AWS Execution Plan ✅ RUN 001 COMPLETE |
