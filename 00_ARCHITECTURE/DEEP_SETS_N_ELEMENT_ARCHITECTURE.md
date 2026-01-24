@@ -66,6 +66,9 @@ At each timestep, the agent observes:
 - **Ego state**: `s = [speed, accel, heading, peer_count]` (fixed 4 dims)
 - **Peer set**: `E = {e_1, e_2, ..., e_n}` where each `e_i = [rel_x, rel_y, speed, accel, heading, age_ms]` (6 dims per peer)
 
+**Cone Filter (Front FOV):**
+Inside **AI inference (V001 only)**, filter peers by relative bearing to keep only vehicles within a forward-facing cone. Dumb broadcasters (V002/V003/...) do **not** filter; they only transmit. The same cone filter is applied in simulation to match training/inference distributions.
+
 Key properties:
 - Elements in E are **unordered** (no natural "peer 1" vs "peer 2")
 - n **changes every timestep** (vehicles enter/leave range)

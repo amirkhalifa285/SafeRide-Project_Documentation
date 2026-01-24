@@ -1,23 +1,24 @@
 # Simulation Training Pipeline (Sim-to-Real)
 
 **Purpose:** Generate massive, labeled training datasets for RL using SUMO + Python Emulator.
-**Approach:** Pure Simulation Training -> Zero-Shot Transfer to Real Hardware.
+**Approach:** **Hybrid** - Real recording as base + SUMO augmentation + measured ESP-NOW emulation.
 **Status:** Active | SUMO v1.25.0+
 
 ---
 
 ## 🚀 Pipeline Overview
 
-We do **not** train on real-world data. We train entirely in simulation to ensure safety and scalability.
+We **ground training in a short real recording** (3-car convoy) and then scale in simulation for safety and coverage.
 
 ```mermaid
 graph LR
-    A[Base Scenarios] -->|SUMO Augmentation| B[Augmented FCD]
-    B -->|Network Emulator| C[Noisy Observations]
-    C -->|Feature Extractor| D[RL Training]
+    A[Real Recording (3-car base)] -->|Convert to SUMO base| B[Base Scenario]
+    B -->|SUMO Augmentation| C[Augmented FCD]
+    C -->|Network Emulator| D[Noisy Observations]
+    D -->|Feature Extractor| E[RL Training]
 ```
 
-1.  **Base Scenarios:** "Perfect" SUMO scenarios (convoy, intersection, braking).
+1.  **Base Scenario:** Real 3-car recording converted to SUMO format (ground truth seed).
 2.  **Augmentation:** Randomize speeds, gaps, reaction times (±20%).
 3.  **Network Emulator:** Apply measured ESP-NOW defects (Latency, Loss, Jitter) to create "Noisy" data.
 4.  **Training:** RL Agent learns to drive robustly despite the noise.
@@ -48,7 +49,7 @@ pip install pandas numpy gymnasium stable-baselines3 sumolib traci
 
 ## 📂 Stage 1: Scenario Generation (SUMO)
 
-**Goal:** Create "Ground Truth" trajectories.
+**Goal:** Create "Ground Truth" trajectories grounded in a real 3-car base.
 
 ### Input Files
 - `network.net.xml`: Road geometry.
@@ -101,9 +102,9 @@ python -m ml.scripts.gen_scenarios \
 **Config:** `emulator_params.json` (Derived from real RTT characterization)
 
 ### Effect Logic
-1.  **Latency:** $Delay = \text{Base}(15ms) + \text{Jitter}(\sigma=5ms)$
-2.  **Packet Loss:** $P(Loss) = 0.02 + 0.1 \times \text{DistanceFactor}$
-3.  **Burst Loss:** If previous packet lost, $P(Loss)$ increases to 20%.
+1.  **Latency:** $Delay = \text{Base}(\mu_{lat}) + \text{Jitter}(\sigma_{lat})$
+2.  **Packet Loss:** $P(Loss) = p_0 + k \times \text{DistanceFactor}$
+3.  **Burst Loss:** If previous packet lost, $P(Loss)$ increases per measured burst parameters.
 4.  **Staleness:** If packet lost, hold last known value + increment `age`.
 
 **Output:** `training_data.csv` (Noisy observations seen by V001).

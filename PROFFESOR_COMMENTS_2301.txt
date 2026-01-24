@@ -1,0 +1,94 @@
+PROFFESOR_COMMENTS
+I will provide you with comments professors said about the SDD, they are important and might cause architectural changes, or you will need to validate this for me or that what we have works like the professor wants.
+
+First comment is about dataset gathering:
+
+prof:
+We discussed that you will record a 3 car scenario and then you will AUGMENT this recording to generate additional virtual cars with slight manipulations on the recording data in order to create a simulation that has more traffic than the 3 cars that were recorded.
+
+I fail to see that in you design...
+
+
+Amir Kh
+18:26 20 Jan
+Yes that was the initial plan, but recording one short scenario and augmenting it gives limited possibilities. Our simulation program allows to crop a real map location place as many cars how we want (creating base scenario) then on that created scenario we augment to multiple which gives us almost unlimited scenario possibilities
+
+
+Amir Kh
+18:29 20 Jan
+In addition, the recording that we will do is for the ESPNOW characterization, meaning we will record rx and tx on each vehicle, then we process the 6 files from the 3 vehicles and we get precise measurements of packet loss/latency and other crucial network constraints that are injected at the time of running the simulation on a scenario
+
+
+Amit Resh
+18:09 Today
+The idea of recording is to start with something that is real. Not halucinated. Then the augmentation is build upon something that has a real basis. You decided to NOT do recordings? Because you want to hallucinate with your imagination, so you have more options????
+
+
+2nd comment is about use case diagram you can see an xml file of it in the docs folder:
+In a use case diagram it is customary to put the use cases in an ellipse -- not a box. The table is not supposed to be here -- only the diagram. There is no need for this duplication. I also think that you display the system as an actor that itself uses the system. And that is a mistake.  Also, "other cars" do not "use the system" .. the system broadcasts messages into the air and then anybody/anything is free to receive them .. it doesn't mean the "use the system".
+Show less
+Amir Kh
+
+13:39 14 Jan
+Use case diagram updated
+Amit Resh
+
+17:58 20 Jan
+I don't agree that "Collect Sensor Data" is triggered by the Receive and transmit. It doesn't work that way. Each car collects it own sensors every 100mSec. It receives data from outside when it receives. It transmits it's sensors+ReBroadcasts after it collected it's own sensors. So the triggers are very different than what you showed.
+Show more
+Amir Kh
+
+19:03 20 Jan
+Updated the diagram, this describes best what you said, we are having trouble with this because we always built use case diagrams for web apps, so if you see anything wrong still please advise
+
+Amit Resh
+18:15 Today
+No .. NOT good. You need to think of it like this: a Use-Case diagram shows the reader who uses the system and in what way. Ask yourself this: you are building a system: who uses it? Those are the actors. How does each actor use the system: those are the direct use cases. Do the use cases use other additional internal use case (that's where there is <<include>> and <<extend>>. Does the system itself use external components? If yes... they are actors too, linked to the uses cases that use them. There are use case that can execute internally/periodically (they are internally triggered with a timer, for example).
+
+Scratch what you have, and design a new Use case diagram
+
+
+3rd discussion is about the the timestep var in the IMU data structure:
+because other sensors do not update at the same rate, we use the timestamp for more efficient sensor fusion by comparing timestamps.
+
+Amit Resh
+17:54 20 Jan
+But this is part of what you transmit. And it becomes irrelevant in other ESP32 system, that did necessarily boot at the exact same moment as the transmitter. If you only use this data internal, in each single ESP32, the OK .. but why does it need to be transmitted out?
+
+Amir Kh
+Amir Kh
+18:46 20 Jan
+timestamp is a bad naming, we should have used sequenceNumber or something similar, this is used for deduplication or old packets, meaning V002 received message at timestamp X from V001, the next time it V002 receives a message from V001 it will use that value to make sure the message is new and relevant
+
+
+Amit Resh
+18:10 Today
+so ... what is the change you want to make? If you want to make a change .. change ... don't talk ...
+
+
+
+4th is Now regarding the data flow diagram and the simulation and training flow this part is cruical:
+
+Regarding the 3 untis -- OK. But this diagram is not correct. It mixes up the ML, which happens in simulator and the AI Agent, which only does Inference on the car unit. I get the bad feeling that you guys still don't understand this project ... You need to really really distinguish between what happens on the embedded side, inside the car vs. what happens in the simulator that runs on a "big-bad" computer running 1 million Epochs ...
+
+Amir Kh
+19:50 20 Jan
+Agreed, the previous diagram is misleading it mixed the offline ML training we do with the in device agent. fixed this by fixing the original diagram first, and adding a separate data flow diagram for the ML + Simulation part.
+
+In data flow diagram now its shown that ego car does Inference only, no training happens on the embedded side we are aware of that.
+
+Amit Resh
+18:05 Today
+It's very good that you separated the 2 flows. But .... they are still not good: In the car, I can't understand where the MESH is maintained. And where the "cone-filtering" happens. I don't understand what a "feature builder" is. I would like to see where the AI-Agent is more clearly. What is the "state manager" in the car?
+
+In the simulation flow: this is much too simplistic. The simulation is NOT a straight flow from top to bottom. There are many intricate details you need to expand on: 1)you record a few physical cars. 2)you generate traffic with augmentations. 3)you create several scenarios from the augmented data. 4)you simulate the scenarios while training the model by: Physical manipulation of the ego-car while using the traffic scenario database (as-is). 5)you visiualize the simulation results. 6)you pick the model that converges and shows that a crash or crashes are eliminated. 7)then you can go to quantization and running the AI Agent on the hardware.
+
+
+
+Ok so my personal take, first of all we need to understand how our current architecture and approach differs from what the proffesor expects, regarding the augmentation.
+We can make a  real life recording of the ego car with 2 cars in front make a 5 minute recording of this scenario where lead car breaks and augment it, we can do that and after the compare with augmentations of SUMO mayber? also does the model train to recieve same input as it will recieve when observing live in the real working production version?  
+
+
+
+
+

@@ -1,0 +1,451 @@
+# RoadSense V2V — Scenario Builder & Augmentation Agent Spec
+
+## 0) Mission
+You are an automation agent responsible for generating SUMO scenarios for the RoadSense V2V project.
+
+The project uses SUMO to generate training/evaluation runs for a V2V hazard detection / alerting agent.
+The agent must build **5 base scenarios** and augment each into:
+- **16 training scenarios**
+- **4 evaluation scenarios**
+Total: 100 scenarios (80 train + 20 eval) minimum.
+
+IMPORTANT: The generated scenarios must be structured to **stress-test the Ego vehicle V001**, which is always the **tail vehicle**.
+
+You must also fix a known issue:
+- I augmented ~40 scenarios and checked ~8; none had **more than 3 vehicles**.
+- Your output MUST include **multi-vehicle scenes (>3 vehicles)** consistently.
+- Ensure the augmentation script is actually producing these cases (not just “intended to”).
+
+## 1) Non-Negotiable Constraints
+1) **Single-lane only**. No lane changes. Do not design scenarios that depend on lane changes.
+2) **V001 is always the Ego**, and is **preferred to be at the back (tail)**.
+   - It must never be the lead vehicle in convoy scenarios.
+3) Convoy ordering (default):
+   - Lead: V002
+   - Middle: V003
+   - Tail (Ego): V001
+4) Scenario structure must maximize learning signal:
+   - steady driving → one clear hazard trigger → recovery
+5) Use my map:
+   - OSM input: `map.osm` (provided)
+   - You will generate SUMO network artifacts (net.xml) from it if not already present.
+
+## 2) Definitions & What “Accurate Placement” Means
+A scenario is “accurate” when vehicle start positions are defined by:
+- **Edge ID** (from SUMO net)
+- **Lane index** (always lane 0 because single-lane)
+- **Position along edge** (meters from edge start, `departPos`)
+- **Departure time** (`depart`)
+- Route (edge sequence)
+
+DO NOT “eyeball” positions. Use deterministic selection:
+- Identify key junctions on the map.
+- Choose edges by topology + proximity to those junctions.
+- Place vehicles by explicit offsets from a junction along an edge.
+
+## 3) Map Topology (from the current map screenshot)
+The map contains:
+- A **main vertical spine** (long road)
+- A **right-side loop** connected via a **T junction** (call it J_mid_E)
+- A **lower intersection** where a horizontal road crosses/joins (call it J_low)
+- A **bottom U/oval loop** on the spine (call it U_loop)
+- A left-side parallel segment near the top (not required but may be used)
+
+You must programmatically detect the corresponding junctions/edges in the net rather than rely on names.
+
+### Key Junction Labels (conceptual)
+- J_mid_E: T-junction connecting main spine to right connector/loop
+- J_low: lower intersection on spine with cross road
+- U_loop: bottom curvature/loop segment on spine
+
+Implementation note:
+- Extract junctions from `net.xml` and locate those with degree patterns:
+  - T-junction: one node with 3 connected edges (approx.)
+  - 4-way: 4 connected edges (approx.)
+- Use geometry (x,y coordinates) to pick the correct ones if multiple candidates exist.
+
+## 4) Scenario Requirements (Base Scenarios)
+Each base scenario must be parameterized and reproducible.
+
+### Shared Convoy Template (used by most scenarios)
+
+**CRITICAL: n = number of peers (NOT including V001 ego)**
+
+Convoy ordering varies by peer count n:
+- n=1: V002 (lead) → V001 (tail)
+- n=2: V002 (lead) → V003 → V001 (tail)
+- n=3: V002 (lead) → V003 → V004 → V001 (tail)
+- n≥4: V002 (lead) → V003 → ... → V00(n+1) → V001 (tail)
+
+**V001 is ALWAYS the tail (ego). V002 is ALWAYS the lead.**
+
+Default spacing (augment later):
+- Gap between consecutive vehicles: 25–35m
+
+Preferred speeds:
+- baseline 15 m/s
+- augment 8–12 (low), 13–18 (mid), 19–25 (high)
+
+Hazards must be designed to compress TTC for V001.
+
+---
+
+## 5) The 5 Base Scenarios (Layouts + Placement Rules)
+
+### Base 1 — Straight Spine: Upstream Braking Propagation (Core)
+Goal: V001 must alert/react to lead braking propagation.
+
+Road choice:
+- Choose a long straight-ish segment on main spine, ideally upstream of J_mid_E.
+
+Placement rules:
+- Select an edge on the spine that is at least 250m long or part of a multi-edge route of 400–800m.
+- Place convoy on the same lane, same route:
+  - V002 at position P
+  - V003 at P - gap1
+  - V001 at P - gap1 - gap2
+- Ensure all positions are >= 30m from edge start.
+
+Hazard rules:
+- V002 brakes at a fixed trigger distance before reaching a reference point:
+  - example: 80–120m before entering J_mid_E (or a fixed edge position marker).
+- Optionally model V003 with a small reaction delay so V001 benefits from V2V (not only car-following).
+
+---
+
+### Base 2 — T-Junction Merge: Joiner Cuts In Front of V001 (High Stress)
+Goal: create sudden headway collapse directly ahead of ego WITHOUT lane change.
+
+Road choice:
+- Use J_mid_E: connector from right-side road merges into main spine lane.
+
+Placement rules:
+- Convoy on spine approaching J_mid_E:
+  - V002 and V003 ahead, V001 tail.
+- Joiner J1 starts on connector edge and merges into the spine at J_mid_E.
+
+CRITICAL stress configuration:
+- Tune depart times so J1 merges **between V003 and V001** (directly in front of V001).
+
+Hazard variants:
+- J1 merges and then decelerates (mild/hard).
+- Or V003 brakes because of merge shockwave.
+
+---
+
+### Base 3 — Lower Intersection Cross-Conflict: Late Braking Upstream
+Goal: conflict at J_low causes braking; V001 must detect via upstream broadcasts.
+
+Road choice:
+- Use J_low: intersection of spine with cross road.
+
+Placement rules:
+- Convoy on spine approaching J_low.
+- Cross vehicle C1 approaches from side road crossing J_low.
+
+Hazard rules:
+- Make C1 enter conflict window so V002/V003 brake.
+- Best stress: V003 brakes late (simulated poor driver), increasing collision risk for V001.
+
+---
+
+### Base 4 — U_loop / Curve Late-Reveal: Obstacle After Curve
+Goal: late reveal / compressed TTC; V001 must react.
+
+Road choice:
+- Use U_loop segment on spine.
+
+Placement rules:
+- Place convoy so they must traverse the curve (route includes curve edges).
+- Place obstacle O1 after curve exit on the same lane, at a position such that:
+  - it is encountered shortly after curve exit (40–80m).
+
+Hazard rules:
+- O1 speed: stopped / crawling / slow.
+- V002 brakes late upon encountering O1; propagation stresses V001.
+
+---
+
+### Base 5 — Right Loop Stop-Go Queue: False Positive Control + Real Hazard
+Goal: teach V001 to distinguish normal stop-go vs hazard.
+
+Road choice:
+- Use right-side loop reachable via J_mid_E connector.
+
+Placement rules:
+- Convoy enters loop following a queue leader Q1 ahead.
+- Add at least 1 additional “background” vehicle B1 somewhere in the loop to increase realism.
+
+Hazard rules:
+- Q1 does stop-go patterns (normal).
+- One variant: Q1 hard-stops late → genuine hazard.
+
+---
+
+## 6) Peer Count Requirements (REPLACES ">3 vehicles" rule)
+
+**CRITICAL: Training Run 001 failed because it only had n=2 peers. Run 002 MUST have variable peer counts.**
+
+### Definition
+- **n = number of peers** (vehicles OTHER than V001)
+- V001 is the ego and is NOT counted in n
+- Training must cover **n ∈ {1, 2, 3, 4, 5}** peers
+
+### Base Scenario Peer Distribution
+
+| Base | Total Vehicles | n (peers) | Scenario Type |
+|------|----------------|-----------|---------------|
+| Base 1 | 3 | 2 | Standard convoy (V001+V002+V003) |
+| Base 2 | 4 | 3 | Convoy + joiner (V001+V002+V003+J1) |
+| Base 3 | 5 | 4 | Convoy + cross traffic (V001+V002+V003+C1+C2) |
+| Base 4 | 3 | 2 | Standard convoy, different topology |
+| Base 5 | 6 | 5 | Dense (V001+convoy+queue+background) |
+
+### Augmentation Creates Additional Variation
+- Use `--peer_drop_prob 0.3` to randomly drop peers
+- Use `--min_peers 1` to ensure at least 1 peer remains
+- This creates n=1 cases from n=2+ bases
+
+### How to add vehicles without lane changes:
+- Add a **background follower** behind V001 (B_tail) at safe distance (50–80m).
+- Add a **background leader** ahead of V002 (B_head) at long distance (80–150m).
+- Add **cross traffic** at intersections (Base 3).
+- Add **multiple joiners** (Base 2).
+
+### Invariants
+- V001 must remain tail of the convoy.
+- Extra vehicles should not steal the hazard (unless intentionally designed as hazard sources).
+
+## 7) Augmentation Plan (Per Base Scenario)
+For each base scenario:
+- Create 16 training variants and 4 evaluation variants.
+
+### Training variants (16) should cover:
+- Speed regimes: low/mid/high
+- Headway: short/med/long
+- Brake intensity: gentle/medium/hard
+- Trigger timing: early/mid/late
+- Comms noise: add latency/jitter/drop in some variants (if integrated in pipeline)
+- Vehicle count: enforce multi-vehicle targets above
+
+### Evaluation variants (4) should be out-of-distribution:
+Examples:
+- high speed + long gap but late hard brake
+- short gap + mild brake but comms dropout
+- merge happens slightly earlier than seen in training
+- obstacle speed changed to unusual value
+
+## 8) Implementation Deliverables (Files)
+
+### 8.1) Base Scenario Directories
+Create `base/` directory containing 5 base scenario configs:
+- `base_01_spine/`
+- `base_02_merge/`
+- `base_03_intersection/`
+- `base_04_variant/`
+- `base_05_dense/`
+
+Each base folder contains:
+- `scenario.sumocfg`
+- `network.net.xml`
+- `vehicles.rou.xml`
+- `notes.txt` (describing junction used + hazard trigger)
+
+### 8.2) Required scenario.sumocfg Template
+
+```xml
+<configuration>
+  <input>
+    <net-file value="network.net.xml"/>
+    <route-files value="vehicles.rou.xml"/>
+  </input>
+  <time>
+    <begin value="0"/>
+    <end value="120"/>
+    <step-length value="0.1"/>  <!-- REQUIRED: 10Hz alignment with ML -->
+  </time>
+  <output>
+    <fcd-output value="fcd_output.csv"/>
+    <fcd-output.geo value="false"/>
+    <fcd-output.acceleration value="true"/>  <!-- REQUIRED: ML features -->
+  </output>
+</configuration>
+```
+
+### 8.3) Required vType with SSM Device
+
+```xml
+<vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5"
+       maxSpeed="50" tau="1.0" speedDev="0" lcMode="0">
+  <param key="has.ssm.device" value="true"/>
+  <param key="device.ssm.measures" value="TTC DRAC PET"/>
+  <param key="device.ssm.thresholds" value="4.0 3.4 2.0"/>
+  <param key="device.ssm.range" value="100.0"/>
+  <param key="device.ssm.file" value="ssm_output.xml"/>
+</vType>
+```
+
+**NOTE:** `lcMode="0"` disables lane changes (satisfies Gate C).
+
+### 8.4) Route File Sorting Requirement
+
+**CRITICAL: Vehicles in `vehicles.rou.xml` MUST be sorted by `depart` time ascending.**
+
+SUMO ignores vehicles that appear before earlier-departing vehicles in the file.
+The `gen_scenarios.py` script handles this automatically during augmentation.
+
+### 8.5) Augmented Output Structure
+`augmented/` directory containing generated scenarios:
+- `train/` and `eval/` subfolders
+- Each scenario must be runnable standalone.
+
+### 8.6) Scripts (Already Implemented)
+- `gen_scenarios.py` - Scenario augmentation (in `roadsense-v2v/ml/scripts/`)
+- Must be deterministic with seeds.
+
+### 8.7) Validation
+- Validation gates (Section 9) verify correctness.
+
+## 9) Validation Gates (Must Pass)
+You must automatically run validation after generation:
+
+### Gate A — Convoy Role Invariant (UPDATED for variable n)
+For every scenario:
+- V001 exists and departs at t=0
+- V001 is the tail vehicle (lowest departPos among convoy vehicles on same route)
+- At least one peer vehicle exists (V002 minimum)
+- V001 departPos < all other convoy vehicles' departPos
+
+```python
+def validate_convoy_role(scenario_dir):
+    vehicles = parse_vehicles(scenario_dir / "vehicles.rou.xml")
+    assert "V001" in vehicles, "V001 (ego) missing"
+    assert vehicles["V001"]["depart"] in ("0", "0.0"), "V001 must depart at t=0"
+
+    # V001 must be tail (lowest departPos among convoy on same route)
+    convoy_on_main = [v for v in vehicles.values() if v.get("route") == vehicles["V001"].get("route")]
+    if len(convoy_on_main) > 1:
+        v001_pos = float(vehicles["V001"]["departPos"])
+        for v in convoy_on_main:
+            if v["id"] != "V001":
+                assert float(v["departPos"]) > v001_pos, f"V001 not at tail"
+```
+
+### Gate B — Peer Count Distribution (UPDATED for n ∈ {1,2,3,4,5})
+Compute peer count (n = total_vehicles - 1) per scenario from `.rou.xml`:
+
+```python
+def validate_peer_distribution(dataset_dir):
+    peer_counts = defaultdict(int)
+    for scenario in glob(dataset_dir / "train/*"):
+        n = count_vehicles(scenario) - 1  # n = total - V001
+        peer_counts[n] += 1
+
+    # Must have representation across n ∈ {1,2,3,4,5}
+    for n in [1, 2, 3, 4, 5]:
+        assert peer_counts[n] >= 2, f"Insufficient scenarios with n={n} peers"
+```
+
+If violated: generation fails.
+
+### Gate C — No Lane Changes
+Confirm vehicle types / routes do not allow lane changing (or ensure routes are single-lane with no alternative lanes).
+If SUMO settings allow lane changes by default, explicitly disable lane changes in vehicle type.
+
+### Gate D — Hazard Actually Stresses V001
+For each scenario, the hazard must be positioned so that V001 experiences:
+- decreasing gap OR reduced TTC to the vehicle ahead during the hazard window
+This can be approximated by:
+- analyzing speed profiles / spacing around trigger time
+- or at minimum ensuring hazard is upstream ahead of V001 (not behind it)
+
+### Gate E — Runnable
+Each scenario must start and run for the intended duration without missing files.
+
+## 10) Notes on “How to Select Edges / Positions”
+Because edge IDs vary, use the following method:
+- Parse `net.xml`
+- Identify the junction nodes (J_mid_E, J_low) by connectivity pattern + geometry.
+- From a junction, pick incoming edges for approach and outgoing edges for continuation.
+- Place vehicles by offsets from junction along an approach edge:
+  - Example: convoy starts 200m before junction
+  - hazard triggers 100m before junction
+  - joiner starts 120m on connector before junction
+
+Always ensure:
+- depart positions are within edge length
+- no overlaps at spawn time (use depart times or slight offsets)
+
+## 11) Acceptance Criteria
+Work is complete when:
+- 5 base scenarios exist and match the described topology
+- Each base produces 16 train + 4 eval variants
+- **Peer count distribution covers n ∈ {1,2,3,4,5}** (via base variation + dropout)
+- V001 is always tail ego and hazards are designed to stress V001
+- All scenarios run without errors
+
+---
+
+## 11.5) Integration with gen_scenarios.py
+
+Base scenarios will be augmented using the existing pipeline in `roadsense-v2v/ml/scripts/gen_scenarios.py`.
+
+### Canonical Augmentation Command
+
+```bash
+cd /path/to/roadsense-v2v
+./ml/run_docker.sh generate \
+  --base_dir ml/scenarios/base_XX \
+  --output_dir ml/scenarios/datasets/dataset_v2/base_XX \
+  --seed <unique_per_base> \
+  --train_count 16 \
+  --eval_count 4 \
+  --peer_drop_prob 0.3 \
+  --min_peers 1 \
+  --route_randomize_non_ego \
+  --route_include_v001 \
+  --emulator_params ml/espnow_emulator/emulator_params_5m.json
+```
+
+### Key Arguments
+
+| Argument | Purpose |
+|----------|---------|
+| `--peer_drop_prob 0.3` | 30% chance to drop each peer (creates n variation) |
+| `--min_peers 1` | Ensures at least 1 peer remains after dropout |
+| `--route_randomize_non_ego` | Assigns random routes to non-V001 vehicles |
+| `--route_include_v001` | Also randomizes V001's route |
+| `--seed` | Use different seed per base for variety |
+
+### Augmentation Ranges (Hardcoded in gen_scenarios.py)
+
+```python
+AUGMENTATION_RANGES = {
+    "speedFactor": (0.8, 1.2),    # Speed multiplier ±20%
+    "sigma": (0.0, 0.5),          # Driving imperfection
+    "decel": (3.5, 5.5),          # Braking capacity (m/s²)
+    "tau": (0.5, 1.5),            # Time headway (seconds)
+    "spawn_jitter_s": (0.0, 2.0), # Vehicle spawn time variation
+}
+```
+
+### Output Structure
+
+```
+dataset_v2/
+├── manifest.json              # Reproducibility metadata
+├── train/
+│   ├── train_000/
+│   │   ├── scenario.sumocfg
+│   │   ├── network.net.xml
+│   │   └── vehicles.rou.xml
+│   └── ... (16 total)
+└── eval/
+    ├── eval_000/
+    │   └── ...
+    └── eval_003/
+```
+
+---
+
+END.

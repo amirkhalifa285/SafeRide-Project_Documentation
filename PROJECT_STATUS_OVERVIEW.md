@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 19, 2026
+**Last Updated:** January 23, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -30,10 +30,12 @@ WHAT WE ARE DOING NOW:
   1. Firmware migration: port Deep Sets inference to ESP32 (Phase 5)
   2. ESP-NOW LR mode validation (enabled; extended range tests pending)
   3. Production training runs with longer timesteps + eval coverage (Run 001 was a test run)
+  4. Professor feedback alignment: real-recording base, **cone filtering inside V001 AI inference**, diagram fixes
 
 KEY DOCUMENTS:
   - Architecture: 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
   - Implementation: 10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md
+  - Professor Response: 10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md
 
 DO NOT:
   - Hardcode peer slots (V002, V003)
@@ -70,6 +72,24 @@ COMPLETED                       CURRENT                         PLANNED
 ---
 
 ## Recent Achievements
+
+### Jan 23, 2026 - Professor Feedback Alignment (Docs + Plan)
+- **Hybrid data strategy documented:** real 3-car recording is the **mandatory base** for augmentation
+- **Cone filtering clarified:** V001-only step inside AI inference before Observation Builder (front FOV)
+- **Use-case boundary clarified:** sensors treated as external actors (firmware boundary)
+- **Next work:** update draw.io diagrams + implement cone filter in embedded + sim
+
+### Jan 22, 2026 - Scenario Generator Enhanced for Variable Peer Counts
+- **gen_scenarios.py enhanced:** Added 4 new CLI arguments for peer variation:
+  - `--peer_drop_prob`: Probability of dropping each non-V001 vehicle (0.0-1.0)
+  - `--min_peers`: Minimum peers to keep after dropout
+  - `--route_randomize_non_ego`: Randomize route assignment for non-V001 vehicles
+  - `--route_include_v001`: Include V001 in route randomization
+- **New features:** `apply_peer_dropout()`, `randomize_routes()`, `AugmentationConfig` dataclass
+- **Manifest enhanced:** Now includes `augmentation_config` and `peer_count_distribution`
+- **Tests:** 17 new unit tests added; all tests pass
+- **SCENARIO_BUILDING.txt updated:** Spec corrected for n ∈ {1,2,3,4,5} peer counts
+- **Impact:** Unblocks dataset_v2 generation for Training Run 002
 
 ### Jan 19, 2026 - LR Mode Enabled + Channel 6 Standardized
 - **LR mode enabled:** ESP-NOW LR mode + max TX power applied in transport + RTT firmware
@@ -119,6 +139,7 @@ COMPLETED                       CURRENT                         PLANNED
 |----------|---------|----------|
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
 | `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps | **HIGH - START HERE** |
+| `docs/10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md` | Professor feedback response plan | **HIGH - ACTIVE** |
 | `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Create reusable training AMI | **HIGH - NEXT SESSION** |
 | `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | LR mode validation + range tests | HIGH - VALIDATION |
 
@@ -164,9 +185,28 @@ COMPLETED                       CURRENT                         PLANNED
 - DO keep all ESP-NOW devices on the same channel (default: 6 for home tests)
 - DO complete extended range tests before updating emulator params
 
+### January 23, 2026: Hybrid Data Strategy + Cone Filtering Clarification
+
+**Decision:** Ground augmentation in a real 3-car recording and apply cone filtering only on V001 **inside AI inference** before observation building.
+
+**Rationale:**
+1. Professor requires a real-data basis before augmentation
+2. Cone filtering is a receiver-side perception filter; broadcasters remain dumb
+3. Training and inference must match observation filtering
+
+**What this means for AI agents:**
+- DO treat the real recording as the **mandatory base** for augmentation
+- DO implement cone filtering **only on V001** (front FOV) and mirror it in simulation
+
 ---
 
 ## For AI Agents: What To Do
+
+### If returning after a break (start here)
+1. **Read:** `docs/10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md` (professor alignment plan)
+2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets + V001-only cone filter)
+3. **Read:** `docs/20_KNOWLEDGE_BASE/ML_AUGMENTATION_PIPELINE.md` (hybrid real-base pipeline)
+4. **First task:** Implement **V001-only cone filtering** in embedded inference and mirror in simulation observation builder
 
 ### If asked to work on ML/Training:
 1. **READ FIRST:** `DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (critical architecture)

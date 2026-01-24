@@ -19,7 +19,9 @@
 │  ✅ Phase 4 - Training Pipeline: COMPLETE - Jan 15, 2026                    │
 │  ⚠️ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026 (see post-mortem)│
 │  ► Phase 5 - Firmware Migration: NEXT PRIORITY                              │
-│  ► Phase 6 - Training Run 002: 10M steps, variable n - NEW (Jan 17, 2026)  │
+│  ► Phase 6 - Training Run 002: 10M steps, variable n - IN PROGRESS          │
+│    ✅ gen_scenarios.py enhanced (peer dropout, route randomization) Jan 22  │
+│    ○ Build 5 base scenarios with variable peer counts                       │
 │  ○ EC2 AMI Creation: PLANNED (next session)                                 │
 │  ○ LR Mode Migration: PLANNED (after firmware port)                         │
 └─────────────────────────────────────────────────────────────────────────────┘

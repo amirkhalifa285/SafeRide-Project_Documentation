@@ -731,14 +731,31 @@ void processV2VMessages(MLObservation& obs) {
    - Vehicle parameters (decel, tau, sigma, speedFactor) - already done
    - Spawn timing jitter - already done
 
-**Generator Changes Required:**
-```python
-# In scenario generator, add vehicle count variation:
-peer_counts = [1, 2, 3, 4, 5]  # Variable number of peers
-for scenario_id, peer_count in enumerate(scenarios):
-    # Generate V001 (ego) + V002..V00{peer_count+1} peers
-    generate_scenario_with_n_peers(peer_count)
+**Generator Changes:** ✅ **IMPLEMENTED (Jan 22, 2026)**
+
+The `gen_scenarios.py` script now supports peer count variation:
+
+```bash
+./ml/run_docker.sh generate \
+  --base_dir ml/scenarios/base_XX \
+  --output_dir ml/scenarios/datasets/dataset_v2/base_XX \
+  --seed 42 \
+  --train_count 16 \
+  --eval_count 4 \
+  --peer_drop_prob 0.3 \
+  --min_peers 1 \
+  --route_randomize_non_ego \
+  --route_include_v001 \
+  --emulator_params ml/espnow_emulator/emulator_params_5m.json
 ```
+
+**New Arguments:**
+- `--peer_drop_prob 0.3`: 30% chance to drop each peer (creates n variation)
+- `--min_peers 1`: Ensures at least 1 peer remains after dropout
+- `--route_randomize_non_ego`: Assigns random routes to non-V001 vehicles
+- `--route_include_v001`: Also randomizes V001's route
+
+**Remaining:** Build 5 base scenarios with variable vehicle counts (n=2 to n=5).
 
 ### 7.3 Training Run 002 Requirements
 
@@ -810,6 +827,7 @@ for scenario_id, peer_count in enumerate(scenarios):
 |---------|------|--------|---------|
 | 1.0 | 2026-01-13 | Amir Khalifa | Initial implementation plan |
 | 1.1 | 2026-01-17 | Claude | Added Phase 6: Production Training Run requirements (variable n) |
+| 1.2 | 2026-01-22 | Claude | Phase 6.2 gen_scenarios.py enhancements IMPLEMENTED |
 
 ---
 
