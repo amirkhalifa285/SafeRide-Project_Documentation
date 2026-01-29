@@ -1,0 +1,409 @@
+2. System Architecture
+
+2.1 System Overview
+
+The SafeRide V2V system operates across two phases with distinct platforms and objectives:
+
+Phase A - Training System: Executes on a workstation or cloud server. SUMO traffic simulation combined with a Python-based ESP-NOW Emulator trains a Reinforcement Learning agent over millions of timesteps. The output is a quantized TFLite model.
+
+Phase B - Deployment System: Executes on ESP32 microcontrollers in vehicles. Performs inference only. Receives V2V messages via ESP-NOW mesh and outputs driver alerts.
+
+Both phases share a common V2V message format and communication characteristics, enabling effective Sim2Real transfer.
+
+**[DIAGRAM: Two-Phase System Overview]**
+Figure 2.1 - SafeRide V2V System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     SafeRide V2V System Architecture                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                    PHASE A: TRAINING SYSTEM                       ║
+    ║                  (Development - Workstation/Cloud)                ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║                                                                   ║
+    ║  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐        ║
+    ║  │  Real-World  │───▶│  Scenario    │───▶│  SUMO        │        ║
+    ║  │  Recording   │    │  Augmentation│    │  Simulation  │        ║
+    ║  │  (3 cars)    │    │  + ESP-NOW   │    │  Engine      │        ║
+    ║  └──────────────┘    │  Emulator    │    └──────┬───────┘        ║
+    ║                      └──────────────┘           │                 ║
+    ║                                                 ▼                 ║
+    ║                                      ┌──────────────────┐        ║
+    ║                                      │   RL Training    │        ║
+    ║                                      │   (PPO Agent)    │        ║
+    ║                                      │   Millions of    │        ║
+    ║                                      │   Timesteps      │        ║
+    ║                                      └────────┬─────────┘        ║
+    ║                                               │                   ║
+    ║                                               ▼                   ║
+    ║                                      ┌──────────────────┐        ║
+    ║  OUTPUT ────────────────────────────▶│  Trained Model   │        ║
+    ║                                      │  (.tflite)       │        ║
+    ║                                      └──────────────────┘        ║
+    ║                                               │                   ║
+    ╚═══════════════════════════════════════════════│═══════════════════╝
+                                                    │
+                            ┌───────────────────────┘
+                            │  Quantize + Deploy
+                            ▼
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                  PHASE B: DEPLOYMENT SYSTEM                       ║
+    ║                    (Production - In Vehicle)                      ║
+    ╠═══════════════════════════════════════════════════════════════════╣
+    ║                                                                   ║
+    ║   ┌─────────────────┐                                            ║
+    ║   │ Peer Vehicles   │                                            ║
+    ║   │ (V002...VN)     │──── ESP-NOW ────┐                          ║
+    ║   │ Dumb Broadcast  │                 │                          ║
+    ║   └─────────────────┘                 │                          ║
+    ║                                       ▼                          ║
+    ║   ┌─────────────────┐         ┌──────────────┐    ┌─────────┐   ║
+    ║   │ Ego Sensors     │────────▶│  AI Agent    │───▶│ ALERT   │   ║
+    ║   │ (IMU,GPS,Mag)   │         │  (Inference  │    │ (LED/   │   ║
+    ║   └─────────────────┘         │   Only)      │    │ Buzzer) │   ║
+    ║                               └──────────────┘    └─────────┘   ║
+    ║                                                                   ║
+    ║   NO TRAINING HAPPENS HERE - INFERENCE ONLY                      ║
+    ║                                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+```
+
+
+2.2 Training System (Phase A)
+
+The Training System produces a collision avoidance policy for deployment on embedded hardware. It runs offline, before vehicle deployment.
+
+2.2.1 Training System Processes
+
+Process 1 - Data Collection & Scenario Generation:
+- Record real-world driving data from 3 physical vehicles equipped with sensors
+- Clean and analyze recordings to build a base trajectory database
+- Augment recordings to generate traffic scenarios with varied:
+  - Vehicle counts (1-5 peers)
+  - Driver behaviors (deceleration, reaction time, speed variance)
+  - Network conditions (latency, packet loss profiles)
+
+Process 2 - Decision Learning (RL Training Loop):
+- SUMO simulation engine executes traffic scenarios
+- ESP-NOW Emulator injects communication impairments (latency: 10-80ms, packet loss: 2-15%, jitter)
+- PPO agent (V001/Ego) explores actions within simulation
+- Agent receives rewards for safe following, penalties for collisions and harsh braking
+- Training continues until policy converges
+
+Process 3 - Model Output & Validation:
+- Evaluate trained policy across held-out scenarios
+- Measure collision avoidance success rate (target: >85%)
+- Freeze best model weights upon convergence
+- Quantize to INT8 TFLite format for ESP32 deployment
+
+**[DIAGRAM: Training System Data Flow]**
+Figure 2.2 - Training System Data Flow
+Note: Use your existing Training-DataFlow.drawio diagram here.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              TRAINING SYSTEM - Process Architecture             │
+└─────────────────────────────────────────────────────────────────┘
+
+   PROCESS 1                PROCESS 2               PROCESS 3
+   Data Collection          Decision Learning       Model Output
+   ────────────────         ─────────────────       ────────────
+        │                         │                      │
+        ▼                         ▼                      ▼
+┌───────────────┐         ┌───────────────┐      ┌───────────────┐
+│ Record 3-Car  │         │ RL Agent      │      │ Evaluate      │
+│ Scenario      │────────▶│ Explores      │─────▶│ Collision     │
+│ (Real Data)   │         │ Actions in    │      │ Avoidance     │
+└───────────────┘         │ Simulation    │      │ Success Rate  │
+        │                 └───────────────┘      └───────┬───────┘
+        │                         ▲                      │
+        ▼                         │                      │
+┌───────────────┐                 │               ┌──────▼──────┐
+│ Augment →     │                 │               │ Converged?  │
+│ Create N      │                 │               │             │
+│ Scenarios     │                 │               │  NO → Tune  │
+└───────┬───────┘                 │               │  YES ↓      │
+        │                         │               └──────┬──────┘
+        ▼                         │                      │
+┌───────────────┐                 │               ┌──────▼──────┐
+│ SUMO +        │─────────────────┘               │ Freeze      │
+│ ESP-NOW       │  Simulated V2V                  │ Best Model  │
+│ Emulator      │  Messages                       │ → .tflite   │
+└───────────────┘                                 └─────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Communication in Training: ESP-NOW EMULATOR injects realistic  │
+│ latency (10-80ms), packet loss (2-15%), jitter based on        │
+│ measured hardware data. Agent learns despite imperfect info.   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+2.2.2 Training System Lifecycle
+
+1. Record: Capture real 3-car convoy data (base for augmentation)
+2. Augment: Generate scenario variations from recordings
+3. Train: Run RL agent in SUMO + Emulator environment
+4. Evaluate: Test policy on held-out scenarios
+5. Iterate: Tune hyperparameters or augmentation if not converged; return to step 3
+6. Export: Quantize converged model to TFLite
+7. Deploy: Flash model to ESP32 hardware
+
+
+2.3 Deployment System (Phase B)
+
+The Deployment System runs inside vehicles, performing real-time inference to detect collision hazards and alert drivers.
+
+2.3.1 Deployment System Processes
+
+Process 1 - Data Collection & Exchange:
+- Ego vehicle sensors (IMU, GPS, Magnetometer) sample kinematic state at 10Hz
+- ESP-NOW receives V2V broadcast messages from peer vehicles (0 to N peers)
+- Package Manager deduplicates messages using MAC + sequence number
+- Peer State Storage maintains latest known state for each detected vehicle
+
+Process 2 - Decision Making (Inference):
+- Cone Filter selects relevant peers within front field-of-view
+- Observation Builder constructs input tensor:
+  - Ego state: speed, acceleration, heading, peer_count
+  - Per-peer features: relative position, relative velocity, heading difference, message age
+- Deep Sets TFLite model processes variable peer count through shared encoder
+- Max pooling aggregates peer embeddings to fixed-size representation
+- Policy head outputs risk level classification
+
+Process 3 - Actuation (Driver Alerting):
+- Alert Manager maps risk level to output:
+  - NONE: No alert (green LED)
+  - LOW: Slow blink (yellow LED, 1Hz)
+  - MEDIUM: Fast blink (yellow LED, 5Hz)
+  - HIGH: Solid red LED + buzzer
+- Safety overrides supersede ML output:
+  - All peers stale (age > 500ms): Force caution mode
+  - Rule-based TTC < 1.0s: Force emergency alert
+  - Inference timeout: Fallback to heuristic
+
+**[DIAGRAM: Deployment System Data Flow]**
+Figure 2.3 - Deployment System Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│            DEPLOYMENT SYSTEM - Process Architecture             │
+│                      (Single Vehicle: V001)                     │
+└─────────────────────────────────────────────────────────────────┘
+
+   PROCESS 1                PROCESS 2               PROCESS 3
+   Data Collection          Decision (Inference)    Actuation
+   ────────────────         ────────────────────    ──────────
+        │                         │                      │
+        ▼                         ▼                      ▼
+
+┌───────────────┐         ┌───────────────┐      ┌───────────────┐
+│ SENSORS       │         │ CONE FILTER   │      │ ALERT MANAGER │
+│ (Own State)   │         │ (Front FOV    │      │               │
+│  • IMU        │────┐    │  vehicles     │      │  • LED Strip  │
+│  • GPS        │    │    │  only)        │      │  • Buzzer     │
+│  • Magnetom.  │    │    └───────┬───────┘      │               │
+└───────────────┘    │            │              └───────▲───────┘
+                     │            ▼                      │
+                     │    ┌───────────────┐              │
+                     └───▶│ OBSERVATION   │              │
+                          │ BUILDER       │              │
+┌───────────────┐         │ (Ego + Peers) │              │
+│ ESP-NOW RX    │         └───────┬───────┘              │
+│ (Peer States) │                 │                      │
+│               │────────────────▶│                      │
+│  • V002 state │                 ▼                      │
+│  • V003 state │         ┌───────────────┐              │
+│  • ...VN      │         │ DEEP SETS     │              │
+└───────────────┘         │ TFLite Model  │──────────────┘
+                          │               │     Risk Level
+                          │ INFERENCE     │     (None/Low/
+                          │ ONLY          │      Med/High)
+                          └───────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Communication in Deployment: Real ESP-NOW mesh (2.4GHz).       │
+│ Broadcast every 100ms. Same impairments as emulated.           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+2.3.2 Deployment System Lifecycle
+
+Startup Sequence (Power-on):
+1. INITIALIZATION: Load hardware drivers, configure GPIO, I2C, UART
+2. CALIBRATION: Collect IMU bias, magnetometer offsets
+3. MESH JOIN: Initialize ESP-NOW, register broadcast address
+4. GPS LOCK: Wait for satellite fix (15-60s cold start)
+5. READY: Enter main loop (green LED indicates operational)
+
+Main Loop (100ms cycle):
+1. SENSE (0-10ms): Read IMU, GPS, magnetometer; fuse into ego state
+2. COMMUNICATE (10-40ms): Broadcast V2V message; receive and parse peer messages
+3. INFER (40-80ms): Execute Deep Sets model on current observation
+4. ALERT (80-100ms): Update LED/buzzer based on risk level
+
+Error Handling:
+- Sensor disconnect: Attempt I2C bus recovery; enter degraded mode if failed
+- Inference failure: Fallback to rule-based TTC calculation
+- Critical failure: Halt with red/yellow flash pattern
+
+**[DIAGRAM: Deployment System Lifecycle]**
+Figure 2.4 - Deployment System State Machine
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│         DEPLOYMENT SYSTEM LIFECYCLE (In-Vehicle Only)           │
+└─────────────────────────────────────────────────────────────────┘
+
+                          ┌─────────┐
+                          │  POWER  │
+                          │   ON    │
+                          └────┬────┘
+                               │
+                               ▼
+                    ┌──────────────────┐
+                    │  INITIALIZATION  │
+                    │  • Load drivers  │
+                    │  • Calibrate     │
+                    │  • Join mesh     │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │ Failure      │ Success      │
+              ▼              ▼              │
+      ┌─────────────┐  ┌──────────┐         │
+      │ ERROR/SAFE  │  │  READY   │         │
+      │ MODE        │  │ (Waiting │         │
+      │ (Red LED)   │  │  for     │         │
+      └─────────────┘  │  peers)  │         │
+                       └────┬─────┘         │
+                            │               │
+          ┌─────────────────┴─────────────┐ │
+          │      MAIN LOOP (10 Hz)        │ │
+          │  ┌───────────────────────┐    │ │
+          │  │                       │    │ │
+          │  ▼                       │    │ │
+          │ SENSE ──▶ COMMUNICATE ───┤    │ │
+          │  │            │          │    │ │
+          │  │            ▼          │    │ │
+          │  │        INFER ─────────┤    │ │
+          │  │            │          │    │ │
+          │  │            ▼          │    │ │
+          │  │        ALERT ─────────┘    │ │
+          │  │                            │ │
+          │  └─────────(100ms)────────────┘ │
+          └───────────────────────────────┘ │
+```
+
+
+2.4 Communication Subsystem
+
+The V2V message format is identical across both phases. The transport mechanism differs.
+
+2.4.1 V2V Message Protocol
+
+All vehicles broadcast a 90-byte Basic Safety Message (BSM) compatible with SAE J2735:
+- Header: version, vehicleId, timestamp (13 bytes)
+- Position: latitude, longitude, altitude (12 bytes)
+- Dynamics: speed, heading, longitudinal/lateral acceleration (16 bytes)
+- Sensors: accelerometer, gyroscope, magnetometer vectors (36 bytes)
+- Alert: risk level, scenario type, confidence (6 bytes)
+- Mesh: hop count, source MAC address (7 bytes)
+
+Broadcast rate: 10Hz (every 100ms)
+Maximum payload: 250 bytes (ESP-NOW limit)
+
+2.4.2 Training Phase Communication
+
+Transport: ESP-NOW Emulator (Python)
+- Intercepts SUMO ground-truth vehicle states
+- Converts to V2V message format via to_v2v_message()
+- Injects measured impairments:
+  - Base latency: 12ms, jitter std: 8ms
+  - Packet loss: 2% base, up to 15% high-loss
+  - Domain randomization: 1.5x beyond measured range
+
+2.4.3 Deployment Phase Communication
+
+Transport: ESP-NOW Radio (ESP32 2.4GHz)
+- Wireless broadcast to peers within range
+- Long Range (LR) mode enabled
+- Channel 6 default
+
+Measured characteristics:
+- Latency: 10-50ms
+- Packet loss: 2-15% (distance/obstacle dependent)
+- Range: ~100m line-of-sight with LR mode
+
+**[DIAGRAM: Communication Subsystem]**
+Figure 2.5 - Communication Subsystem Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│           COMMUNICATION SUBSYSTEM (Both Phases)                 │
+└─────────────────────────────────────────────────────────────────┘
+
+    The same V2V message format (90-byte BSM) is used in both phases.
+    Only the TRANSPORT differs:
+
+    ┌─────────────────────────┐      ┌─────────────────────────┐
+    │   TRAINING PHASE        │      │   DEPLOYMENT PHASE      │
+    ├─────────────────────────┤      ├─────────────────────────┤
+    │                         │      │                         │
+    │  ┌─────────────────┐    │      │  ┌─────────────────┐    │
+    │  │ SUMO Vehicle    │    │      │  │ Real Vehicle    │    │
+    │  │ Ground Truth    │    │      │  │ Sensors         │    │
+    │  └────────┬────────┘    │      │  └────────┬────────┘    │
+    │           │             │      │           │             │
+    │           ▼             │      │           ▼             │
+    │  ┌─────────────────┐    │      │  ┌─────────────────┐    │
+    │  │ to_v2v_message()│    │      │  │ to_v2v_message()│    │
+    │  │ (same format)   │    │      │  │ (same format)   │    │
+    │  └────────┬────────┘    │      │  └────────┬────────┘    │
+    │           │             │      │           │             │
+    │           ▼             │      │           ▼             │
+    │  ┌─────────────────┐    │      │  ┌─────────────────┐    │
+    │  │ ESP-NOW         │    │      │  │ ESP-NOW         │    │
+    │  │ EMULATOR        │    │      │  │ REAL TRANSPORT  │    │
+    │  │ (Python)        │    │      │  │ (ESP32 Radio)   │    │
+    │  │                 │    │      │  │                 │    │
+    │  │ Adds:           │    │      │  │ Real-world:     │    │
+    │  │  • Latency      │    │      │  │  • Latency      │    │
+    │  │  • Packet Loss  │    │      │  │  • Packet Loss  │    │
+    │  │  • Jitter       │    │      │  │  • Jitter       │    │
+    │  └────────┬────────┘    │      │  └────────┬────────┘    │
+    │           │             │      │           │             │
+    │           ▼             │      │           ▼             │
+    │  ┌─────────────────┐    │      │  ┌─────────────────┐    │
+    │  │ Agent receives  │    │      │  │ Agent receives  │    │
+    │  │ impaired V2V    │    │      │  │ impaired V2V    │    │
+    │  └─────────────────┘    │      │  └─────────────────┘    │
+    │                         │      │                         │
+    └─────────────────────────┘      └─────────────────────────┘
+
+    The agent is trained with EMULATED impairments so it performs
+    correctly when deployed with REAL impairments.
+```
+
+
+2.5 Architectural Constraints
+
+Single-Agent Architecture:
+- Only V001 (Ego Vehicle) runs the ML model
+- Peer vehicles (V002...VN) transmit state but perform no inference
+
+Variable Peer Count (n-Element Problem):
+- Ego vehicle receives messages from 0 to N peers, where N is dynamic
+- Deep Sets architecture handles variable input via permutation-invariant pooling
+
+Sim2Real Transfer:
+- ESP-NOW Emulator injects measured hardware characteristics during training
+- Agent encounters similar impairments in deployment as during training
+
+Resource Constraints:
+- ESP32 SRAM: 520 KB
+- ML model budget: <40 KB
+- Inference time: <100ms
+
+

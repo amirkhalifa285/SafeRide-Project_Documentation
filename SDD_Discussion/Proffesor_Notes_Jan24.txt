@@ -1,0 +1,81 @@
+Proffesor notes about current SDD:
+Hi
+I read your SDD and i have some comments in the document.
+
+I think you need to look at the comments and then come and talk to me.
+
+1. The more i read of your SDD the more apparent it becomes that the major problem you have is that you do NOT distinguish the 2 MAJOR phases of the system:
+A. Learning/training phase and its processes
+B. Deployment in the car and its processes
+
+This has to be described separately and each has a life cycle of its own. 
+
+Within both phases, the communication system can be described separately from the rest. Its role is to enable the provision of the data needed for
+The learning system: to be augmented and delivered to the model training
+The final used system: to provide the data for the AI agent to make decisions.
+
+The lerning/AI agent can be described separately.
+
+If you separate everything you wrote in the architecture things will become much better.
+This requires different diagrams and explanations of the processes. 
+
+2. Level of abstraction: the architecture talks about processes - not about components!!! 
+
+3. Most of what you have in the architecure section goes into the Design section.
+
+________________________________________________________________________________________________
+SDD Comments:
+1st comment:
+regarding this part Tier 1: Vehicle Fleet & Intelligence Layer (Architecture part):
+The prof wrote: WHat is the connection between the fleet and the intelligence layer?
+
+
+2nd comment:
+regarding this: "The SafeRide V2V system employs a distributed multi-vehicle architecture ESP32-based units communicate via ESP-NOW mesh networking to enable collision detection and driver alerts. The system is organized across three architectural tiers:"
+he said (highlight three architectural tiers): These are design or implementation level tiers. This is not part of the architectural description.
+I advise you to get some idea from the previous project diagrams of the architecture.
+
+
+3rd comment: regarding this part: "Tier 2: Firmware Layer (Distributed) and Tier 3: Hardware Layer
+" he said: 
+What you describe in layers 2 and 3 relates to mesh communication and has nothing to do with what you call the Intelligence layer. 
+You need an overall diagram that breaks the architecture into 3 processes:
+1. The Data exchange and data collection process
+2. The use of the data to make a decision about the situation and whether to react.
+3. The breaking system action when receiving the action request. 
+You can, of course, break this down to more processes if you think it is necessary.
+
+and regarding the hardware layer specifically he said: "This fits in the Design and Implementation sections."
+
+4th comment:
+regarding the system architecture diagram he said:
+"This can describe the communication connection and the fct that the data comes from other cars and the ego car sensors. Distinguish between the: A. Learning/training phase B. Deployment in the car" I dont know if he means its incomplete or wrong give your opinion:
+
+5th comment: regarding 2.1.2 Layer responsibilites, he said:
+"Here the distinction between the two phases makes this a real mess. Again, the layers you describe here are related to the design." and for Component Roles 2.1.3 he said "Design Level Description and not architecture"
+
+
+6th Comment: regarding 2.1.4 Data Flow:
+"Where is the architecture description that this explains? What is the connection between the Sensors and the Policy Inference? ESP NOW? This is a mess."
+
+7th comment: regarding the data flow diagram:
+"Why are all these different processes in 1 diagram.
+Separate the communications from the rest of the system: they can be described completely separately.
+The lower part - this is the training, right? 
+So remove the communication and call it that.
+It fits with your next diagram that says it describes the data flow of the machine learning phase"
+
+as a follow up for the training data flow digram he said:
+This diagram is good. It describes the 1st phase i am referring to earlier. 
+It should be in a separate sub-section of the architecture.
+
+Last comment is regarding System States 2.2.1 he said:
+"What system? The training system or the final system used in the car???
+I don't understand this."
+
+
+I need you to go over these comments understand them heavily look at the SDD sections provided and reference diagrams from previous project, you also have my current diagrams that need fixing, so when you are done you will present a document that describes the problem the professors are saying that we have, why we lack the understanding of seperating architecture AND design where it all went wrong, how to do it right, how do fix the SDD, and provide the relevant ASCII style digrams so I can fix the wrong ones manually myself. Do not overthink this and go creating new stuff, this is not dramatic changes to the system this is just about creating the SDD document the right way and describing our complex system in the clearest way possible.
+
+
+
+

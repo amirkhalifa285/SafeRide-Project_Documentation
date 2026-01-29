@@ -1,0 +1,140 @@
+1. Introduction
+1.1 System Overview
+The SafeRide V2V Enhanced System is a distributed vehicle-to-vehicle (V2V) hazard detection platform with a fleet of vehicle units (N vehicles),communicating via wireless mesh networking with one vehicle assuming the role of an ego node. The system combines real-time sensor data from MPU6500 6-axis inertial measurement units, QMC5883L 3-axis magnetometers, and NEO-6M GPS modules with ESP-NOW mesh networking to enable infrastructure-free collision avoidance.
+
+Each vehicle unit operates autonomously, collecting sensor data at 10Hz which was calculated by inspecting a real-world data recording of the sensors, output file observed a new sensor data row each 0.1 seconds confirming data collection rate of 10Hz , the ego vehicle unit performs on-device machine learning inference for real-time collision risk assessment and decision making, it’s derived from broadcast vehicles states that are structured as V2V safety messages to the ego vehicle (where the machine learning agent is active). The system is capable of detecting multiple traffic scenarios including convoy following and intersections.
+1.2 Purpose
+This Software Design Document provides a comprehensive technical specification for the SafeRide V2V Enhanced System. It serves as:
+
+Technical blueprint defining system architecture and component interactions
+Development reference for firmware implementation
+Integration guide documenting hardware and software interfaces
+Validation basis for verifying implementation correctness
+Maintenance support for future system modifications
+
+The document translates functional and non-functional requirements from the SRS into concrete design decisions.
+1.3 Scope
+In Scope:
+
+Training System (Phase A):
+- SUMO-based traffic simulation environment
+- ESP-NOW Emulator for realistic communication modeling
+- Reinforcement Learning training pipeline (PPO)
+- Scenario generation and augmentation from real recordings
+- Model quantization for embedded deployment
+
+Deployment System (Phase B):
+- Firmware architecture for ESP32-based vehicle units
+- Sensor integration (MPU6500 IMU, QMC5883L magnetometer, NEO-6M GPS)
+- ESP-NOW mesh networking protocol implementation
+- V2V message format and communication design
+- On-device machine learning inference architecture
+- Multi-scenario hazard detection algorithms
+
+Out of Scope:
+
+Cloud-based services or mobile applications
+Production safety certification
+Vehicle actuation or autonomous control
+Additional sensor types (camera, radar, LIDAR)
+1.4 Definitions and Acronyms
+Term
+Definition
+BSM
+Basic Safety Message - SAE J2735 standard message format
+ESP-NOW
+Espressif's connectionless WiFi communication protocol
+ESP32
+Espressif dual-core microcontroller with integrated WiFi
+GPS
+Global Positioning System
+HDOP
+Horizontal Dilution of Precision
+I2C
+Inter-Integrated Circuit serial protocol
+IMU
+Inertial Measurement Unit
+ML
+Machine Learning
+MPU6500
+InvenSense 6-axis motion tracking device
+NVS
+Non-Volatile Storage
+QMC5883L
+QST Corporation 3-axis digital magnetometer
+SAE
+Society of Automotive Engineers
+SPI
+Serial Peripheral Interface
+TFLite
+TensorFlow Lite for embedded devices
+UART
+Universal Asynchronous Receiver-Transmitter
+V2V
+Vehicle-to-Vehicle communication
+Sim2Real
+Simulation to Reality
+RL
+Reinforcement Learning
+SUMO
+Open source traffic simulation platform
+Training System
+Offline system running on workstation/cloud for RL model training
+Deployment System
+Real-time system running on ESP32 in vehicles for inference
+PPO
+Proximal Policy Optimization - RL training algorithm
+Deep Sets
+Neural network architecture for variable-size set inputs
+
+1.5 Constraints
+Hardware Constraints:
+
+Constraint
+Specification
+ESP32 SRAM
+520 KB total
+ESP32 Flash
+4 MB
+ESP-NOW Payload
+250 bytes maximum
+ESP-NOW Range
+~100 meters line-of-sight
+GPS Update Rate
+1 Hz
+IMU Sample Rate
+10 Hz configured
+
+
+Performance Constraints:
+
+Constraint
+Requirement
+End-to-end Latency
+< 100 ms
+ML Inference Time
+< 100 ms
+Broadcast Rate
+10 Hz
+Detection Accuracy
+> 85%
+False Positive Rate
+< 10%
+
+
+Development Constraints:
+
+Constraint
+Description
+Budget
+Academic project budget
+Timeline
+10-month development cycle
+Team Size
+Three developers
+Platform
+PlatformIO with Arduino framework
+Standards
+SAE J2735 BSM compatibility
+
+

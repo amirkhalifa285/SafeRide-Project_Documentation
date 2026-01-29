@@ -1,0 +1,341 @@
+4. Design
+
+Note: Section 4.1 Machine Learning Design is in a separate file (SafeRide_SDD_2025_2_ML_DESIGN.md)
+
+
+4.2 System Design
+
+This section describes the implementation structure of the Deployment System (in-vehicle ESP32 units).
+
+4.2.1 Hardware Configuration
+
+Each vehicle unit is built on an ESP32 DevKit V1 microcontroller with the following peripherals:
+
+Sensor Suite:
+- MPU6500 6-axis IMU (I2C address 0x68, pins SDA=21, SCL=22)
+- QMC5883L 3-axis Magnetometer (I2C address 0x0D, pins SDA=21, SCL=22)
+- NEO-6M GPS Module (UART2, TX=16, RX=17, requires 5V power from USB pin)
+
+Communication:
+- ESP-NOW 2.4GHz wireless (integrated WiFi radio)
+- Long Range (LR) mode enabled, Channel 6 default
+- Broadcast address: FF:FF:FF:FF:FF:FF
+
+Storage & Output:
+- MicroSD Card Module (SPI: CS=5, MOSI=23, MISO=19, SCK=18) - Ego vehicle only
+- Status LED (GPIO 2)
+- Calibration Button (GPIO 0)
+- Buzzer for high-risk alerts
+
+4.2.2 Layer Responsibilities
+
+The firmware is organized into four logical layers:
+
+Application Layer:
+- Maintains vehicle state aggregated from all sensors
+- Orchestrates hazard detection workflow
+- Manages LED alert patterns based on risk levels
+- Controls main loop timing (100ms cycle)
+
+Machine Learning Layer:
+- Extracts features from sensor and peer vehicle data
+- Executes quantized TFLite model inference
+- Classifies hazard level (NONE, LOW, MEDIUM, HIGH)
+
+Network Layer:
+- Implements ESP-NOW broadcast communication
+- Serializes/deserializes V2VMessage structures
+- Handles message deduplication via MAC + sequence number
+- Manages peer state storage
+
+Sensor Layer:
+- Abstracts hardware-specific sensor access
+- Provides calibrated data in standard units (m/s², rad/s, μT)
+- Implements GPS caching for intermittent signal
+- Performs sensor fusion for tilt-compensated heading
+
+4.2.3 Component Roles
+
+| Component | Role | Primary Activities |
+|-----------|------|-------------------|
+| MPU6500Driver | Motion Sensing | Read acceleration/rotation, calibrate offsets |
+| QMC5883LDriver | Heading Sensing | Read magnetic field, calculate compass heading |
+| NEO6M_Driver | Position Sensing | Parse NMEA, calculate GPS heading, cache position |
+| EspNowTransport | Communication | Initialize ESP-NOW, broadcast/receive messages |
+| PackageManager | Message Handling | Deduplicate, track sources, enforce limits |
+| V2VMessage | Data Structure | Serialize state, validate integrity, check staleness |
+| FeatureExtractor | ML Preprocessing | Normalize data, build observation tensor |
+| MLInference | Classification | Load model, execute inference, return risk level |
+| HazardDetector | Decision Making | Combine ML with safety rules, determine alert level |
+| AlertManager | User Feedback | Map risk to LED patterns, control GPIO |
+
+
+4.3 Data Design
+
+4.3.1 Database Description
+Non-Volatile Storage (NVS):
+
+Namespace
+Key
+Type
+Description
+calibration
+accel_offset_x/y/z
+float
+Accelerometer offsets (m/s²)
+calibration
+gyro_offset_x/y/z
+float
+Gyroscope offsets (rad/s)
+calibration
+mag_hard_iron_x/y/z
+float
+Magnetometer offsets (μT)
+calibration
+is_calibrated
+bool
+Calibration validity
+datalogger
+session_number
+uint16
+Logging session counter
+
+
+4.3.2 Global Data Structures Design
+V2VMessage (90 bytes total):
+
+Section
+Fields
+Size
+Header
+version (1), vehicleId (8), timestamp (4)
+13 bytes
+Position
+lat, lon, alt (floats)
+12 bytes
+Dynamics
+speed, heading, longAccel, latAccel (floats)
+16 bytes
+Sensors
+accel[3], gyro[3], mag[3] (floats)
+36 bytes
+Alert
+riskLevel (1), scenarioType (1), confidence (4)
+6 bytes
+Mesh
+hopCount (1), sourceMAC (6)
+7 bytes
+
+
+ImuData Structure:
+
+accel[3]: Acceleration in m/s² (X, Y, Z)
+gyro[3]: Angular velocity in rad/s (X, Y, Z)
+mag[3]: Magnetic field in μT (X, Y, Z)
+sequenceID: Value used to compare received packets from the same MAC to decide staleness.
+
+GpsData Structure:
+
+latitude/longitude: WGS84 coordinates (double)
+altitude: Meters above sea level (float)
+speed: Ground speed in m/s (float)
+heading: True heading 0-359 degrees (float)
+valid: GPS fix validity (bool)
+satellites: Number in view (uint8)
+hdop: Horizontal dilution of precision (float)
+cached: Using cached data flag (bool)
+
+
+4.4 Structural Design
+
+4.4.1 Class Diagram
+The system consists of the following classes organized by layer:
+
+Interfaces:
+
+IImuSensor: Abstract IMU interface with begin(), read(), calibrate(), loadCalibration(), saveCalibration(), isCalibrated(), getName()
+IGpsSensor: Abstract GPS interface with begin(), read(), update(), hasEverHadFix(), getName()
+ITransport: Abstract transport interface with begin(), send(), onReceive(), getMaxPayload(), getName(), isReady()
+
+Sensor Implementations:
+
+MPU6500Driver implements IImuSensor: I2C communication with MPU6500, offset calibration, NVS storage
+NEO6M_Driver implements IGpsSensor: UART parsing with TinyGPSPlus, 4-state cache logic
+QMC5883LDriver: I2C magnetometer with hard/soft iron calibration
+
+Network Components:
+
+EspNowTransport implements ITransport: Singleton with ESP-NOW initialization, broadcast, callbacks
+PackageManager: Message deduplication using MAC+timestamp, FIFO eviction, 20 MAC limit
+V2VMessage: 90-byte BSM structure with validation methods
+
+Application Components:
+
+FeatureExtractor: Builds 30-dimensional feature vectors from vehicle states
+MLInference: TFLite interpreter wrapper with 10KB tensor arena
+HazardDetector: Orchestrates ML inference, combines with rules
+AlertManager: LED pattern control based on risk level
+
+Utilities:
+
+Logger: Singleton with log levels (DEBUG, INFO, WARNING, ERROR)
+DataLogger: SD card CSV logging with buffered writes
+
+
+**Class Diagram**
+
+**Use case diagram**
+
+
+4.5 Behavioral Design
+
+4.5.1 Sequence Diagram
+Hazard Detection Sequence:
+
+Main Loop calls MPU6500Driver.read() → returns ImuData
+Main Loop calls NEO6M_Driver.read() → returns GpsData
+Main Loop calls FeatureExtractor.setEgoState() with sensor data
+For each peer message: FeatureExtractor.addPeerState()
+FeatureExtractor.extractFeatures() → returns float[30]
+MLInference.infer(features) → returns RiskLevel
+AlertManager.setRisk(level) → updates LED pattern
+
+
+**Sequence diagram**
+
+
+V2V Message Exchange:
+
+Vehicle A: buildV2VMessage() creates 90-byte structure
+Vehicle A: transport.send() broadcasts via ESP-NOW
+Vehicle B: onDataReceived() callback triggered
+Vehicle B: Validate message size == 90
+Vehicle B: PackageManager.isDuplicate() check
+Vehicle B: PackageManager.addPackage() if new
+Vehicle B: Update peer state for ML
+
+
+**v2v message exchange diagram**
+
+
+4.5.2 Activity Diagram
+Main Operation Flow Summary:
+Startup Phase (ONE TIME):
+Initialize Hardware → GPIO, LED, I2C configuration
+Initialize IMU (MPU6500)
+Success → Continue
+Failure → Yellow LED warning (degraded mode, continue without IMU)
+Initialize GPS (NEO6M)
+Success → Continue
+Failure → Yellow LED warning (IMU-only mode, continue)
+Initialize ESP-NOW (V2V mesh)
+Success → Continue
+Failure → Red LED + HALT SYSTEM (critical - cannot operate without V2V)
+Wait for GPS Lock (15-60s cold start)
+Acquired → Green LED (full operational)
+Timeout → Yellow LED (proceed with IMU-only positioning)
+Enter Main Loop
+
+
+Main Loop (10Hz - Every 100ms):
+Read Sensors
+MPU6500: Accelerometer + Gyroscope (x,y,z)
+NEO6M: Position (lat/lon), speed, heading
+Build V2VMessage (90 bytes, SAE J2735 BSM format)
+Pack sensor data + vehicle state
+Broadcast via ESP-NOW
+Send to all peers (FF:FF:FF:FF:FF:FF broadcast)
+Process Received V2V Messages
+Validate message (timestamp freshness <500ms)
+Deduplicate (check sourceMAC + timestamp hash)
+Update peer vehicle states in memory
+Collision Detection (if peers available)
+Extract Features: Ego + peer states → 30 features
+ML Inference: TFLite model (<50ms latency target)
+Risk Classification:
+- None → Continue (Green LED)
+- Low → Yellow LED slow blink (1Hz)
+- Medium → Yellow LED fast blink (5Hz)
+- High → Red LED + Buzzer (continuous alert)
+Update Status LED
+GPS lock: Solid (locked) / Blinking (searching)
+Peer count: Blink pattern (1-3 blinks = peer count)
+System health: Green (OK) / Yellow (degraded) / Red (critical)
+Delay 100ms → Loop back to step 1
+
+
+**Activity diagram**
+
+
+4.6 Software Architecture Pattern
+
+4.6.1 Three-tier: Data, Logic and Presentation tiers
+Presentation Tier:
+
+AlertManager: LED pattern output on GPIO 2
+Risk level mapping: NONE=OFF, LOW=slow blink, MEDIUM=fast blink, HIGH=solid
+Serial Logger: Debug output at 115200 baud
+
+Logic Tier:
+
+HazardDetector: Orchestrates detection, combines ML with rules
+FeatureExtractor: Builds 30-dim feature vectors, normalizes inputs
+MLInference: TFLite model execution, <100ms inference
+VehicleState: Aggregates sensor data, tracks peers
+PackageManager: Deduplicates messages, enforces limits
+MessageBuilder: Populates V2VMessage, validates format
+
+
+
+Data Tier:
+
+Sensor Drivers: MPU6500Driver (I2C 0x68), NEO6M_Driver (UART1), QMC5883LDriver (I2C 0x0D)
+Network: EspNowTransport (WiFi 2.4GHz), V2VMessage (90 bytes)
+Storage: NVS (calibration), DataLogger (SD Card CSV)
+
+4.6.2 MVC: Model, View, Controller structure
+Model:
+
+Data Structures: V2VMessage, ImuData, GpsData, PackageData, RiskLevel, ScenarioType
+Data Access: Sensor drivers, EspNowTransport, PackageManager, NVS, DataLogger
+
+View:
+
+AlertManager: LED output patterns
+
+
+
+Controller:
+
+Main Loop (main.cpp): setup() initializes components, loop() executes 10Hz cycle
+Callbacks: onDataReceived() processes peer messages
+Application Logic: HazardDetector, FeatureExtractor, MLInference
+
+
+4.7 Testing Platform
+
+4.7.1 Testing Framework
+PlatformIO Unity test framework for automated hardware validation.
+
+Test Organization:
+
+test_utils/: Logger tests (3 cases)
+test_v2v_message/: Message structure tests (12 cases)
+test_package_manager/: Deduplication tests (7 cases)
+test_mpu6500_driver/: IMU hardware tests (6 cases)
+test_neo6m_driver/: GPS hardware tests (4 cases)
+test_sd_card/: SD card tests (2 cases)
+test_sensor_integration/: Combined tests (3 cases)
+
+4.7.2 Test Execution
+Command: pio test --upload-port COM3
+
+Validation workflow:
+
+Wire ESP32 with sensors
+Flash test firmware
+Execute test suite (~30 seconds)
+Verify all tests pass
+Flash production firmware
+
+

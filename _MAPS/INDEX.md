@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** January 22, 2026
-**Total Documents:** 62
+**Last Updated:** January 24, 2026
+**Total Documents:** 63
 
 ---
 
@@ -9,29 +9,27 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  PHASE: n-Element Deep Sets Architecture Implementation                     │
+│  PHASE 6: Real Data Pipeline - Production Model Path                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  ✅ RTT Characterization: COMPLETE (valid 5m data)                          │
-│  ✅ ESP-NOW Emulator: COMPLETE (84/84 tests)                                │
-│  ✅ Phase 1 - ConvoyEnv Dict Space: COMPLETE (74/74 tests) - Jan 15, 2026  │
-│  ✅ Phase 2 - Deep Sets Policy Network: COMPLETE (6/6 tests) - Jan 15, 2026│
-│  ✅ Phase 3 - Emulator Causality Fix: COMPLETE - Jan 15, 2026              │
-│  ✅ Phase 4 - Training Pipeline: COMPLETE - Jan 15, 2026                    │
-│  ⚠️ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026 (see post-mortem)│
-│  ► Phase 5 - Firmware Migration: NEXT PRIORITY                              │
-│  ► Phase 6 - Training Run 002: 10M steps, variable n - IN PROGRESS          │
-│    ✅ gen_scenarios.py enhanced (peer dropout, route randomization) Jan 22  │
-│    ○ Build 5 base scenarios with variable peer counts                       │
-│  ○ EC2 AMI Creation: PLANNED (next session)                                 │
-│  ○ LR Mode Migration: PLANNED (after firmware port)                         │
+│  ✅ Phases 1-4: ML Architecture COMPLETE (Deep Sets, ConvoyEnv, Emulator)   │
+│  ✅ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026                  │
+│  ✅ RTT recording validated (drive test works)                               │
+│  ✅ Diagrams updated per professor feedback - Jan 24, 2026                  │
+│                                                                              │
+│  ► Phase 6.1: Enhanced RTT Recording (add GPS + mag)         ◄── NEXT      │
+│  ► Phase 6.2: 3-Car Convoy Recording                                        │
+│  ► Phase 6.3: Augmentation Pipeline Update                                  │
+│  ► Phase 6.4: Cone Filtering (V001 front FOV)                               │
+│  ► Phase 6.5: ML Code Finalization                                          │
+│  ► Phase 6.6: Training Run 002 (10M steps, production)                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Start Here:**
-- **CRITICAL:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
-- Implementation: [n-Element Implementation Plan](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) ► **See Phase 6 for Run 002**
-- Training Results: [Cloud Run 001 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) ⚠️ 80% success (n=2 only - see post-mortem)
-- Next firmware change: [ESP-NOW LR Mode Migration](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md)
+- **IMMEDIATE:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) ► **PRODUCTION MODEL PATH**
+- **Architecture:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
+- **Reference:** [Cloud Run 001 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) ⚠️ 80% success (n=2 only)
+- **Professor Response:** [Professor Comments Response](../10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md)
 
 ---
 
@@ -55,8 +53,9 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 
 | Document | Display Name |
 |----------|--------------|
-| [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | **n-Element Deep Sets Implementation** ► CURRENT PRIORITY |
-| [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) ► NEW |
+| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► IMMEDIATE PRIORITY (Jan 24) |
+| [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | n-Element Deep Sets Implementation (Phases 1-5) |
+| [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) |
 | [DATALOGGER_ACCEL_UPDATE.md](../10_PLANS_ACTIVE/DATALOGGER_ACCEL_UPDATE.md) | DataLogger Accelerometer Update for Network Characterization |
 | [ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md](../10_PLANS_ACTIVE/ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md) | ESP-NOW Network Characterization Implementation Guide |
 | [ESPNOW_LONG_RANGE_MODE_MIGRATION.md](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) | ESP-NOW LR Mode Migration Plan (extends range) |

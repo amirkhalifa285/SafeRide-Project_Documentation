@@ -1,47 +1,52 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 23, 2026
+**Last Updated:** January 24, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Phase 5 - Firmware Migration (Deep Sets Complete)
+## CURRENT PHASE: Phase 6 - Real Data Pipeline (Production Model Path)
 
 ```
 ================================================================================
                          READ THIS FIRST - PROJECT STATUS
 ================================================================================
 
-⚠️  CRITICAL ARCHITECTURE CHANGE - January 13, 2026  ⚠️
+⚠️  CRITICAL: REAL DATA RECORDING REQUIRED - January 24, 2026  ⚠️
 
-WHAT CHANGED:
-  The fixed 11-dimensional observation space (hardcoded for 2 peers: V002, V003)
-  has been REPLACED by a Deep Sets architecture that handles VARIABLE n peers.
+WHAT'S HAPPENING NOW:
+  Two recordings needed before Training Run 002 (production model):
 
-  This is per professor's guidance document (professors_research_for_RL.pdf).
+  1. RTT RECORDING (2 vehicles):
+     - Network characterization: latency, packet loss, jitter
+     - Sensor noise: GPS, IMU, magnetometer variance
+     - Output: emulator_params_measured.json
 
-THE n-ELEMENT PROBLEM:
-  - Ego vehicle receives V2V from n neighbors where n is UNKNOWN and DYNAMIC
-  - A fixed observation space CANNOT handle this
-  - Solution: Permutation-invariant set encoder (Deep Sets)
+  2. 3-CAR CONVOY RECORDING (3 vehicles):
+     - Real trajectory data for augmentation base
+     - Professor requires real data, not pure synthetic
+     - Output: base scenario for dataset_v2
 
-WHAT WE ARE DOING NOW:
-  1. Firmware migration: port Deep Sets inference to ESP32 (Phase 5)
-  2. ESP-NOW LR mode validation (enabled; extended range tests pending)
-  3. Production training runs with longer timesteps + eval coverage (Run 001 was a test run)
-  4. Professor feedback alignment: real-recording base, **cone filtering inside V001 AI inference**, diagram fixes
+IMMEDIATE NEXT STEPS:
+  1. Enhance RTT firmware to log GPS + magnetometer
+  2. Execute RTT recording at multiple distances
+  3. Execute 3-car convoy recording (5-10 min)
+  4. Process recordings → emulator params + base scenario
+  5. Implement cone filtering (V001 front FOV)
+  6. Generate dataset_v2 from real base
+  7. Training Run 002: 10M steps, production model
 
 KEY DOCUMENTS:
+  - **NEW:** 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md ► IMMEDIATE PRIORITY
   - Architecture: 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
-  - Implementation: 10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md
   - Professor Response: 10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md
 
 DO NOT:
-  - Hardcode peer slots (V002, V003)
-  - Pad to max-n with zeros
-  - Sort peers by distance
-  - Use fixed Box(11,) observation space
+  - Train on pure synthetic data (professor rejected this)
+  - Skip the real recording step
+  - Use uncalibrated emulator params for production
+  - Hardcode peer slots or use fixed observation space
 
 ================================================================================
 ```
@@ -54,24 +59,33 @@ DO NOT:
 COMPLETED                       CURRENT                         PLANNED
 ─────────────────────────────────────────────────────────────────────────────────
 
-[Phase 1: ConvoyEnv Dict Obs] → [Phase 2: Deep Sets Policy] → [Phase 3: Emulator Fix]
-  ✅ COMPLETE                     ✅ COMPLETE                    ✅ COMPLETE
+[Phase 1-4: ML Architecture]    [Phase 5: Firmware]            [Phase 6: Real Data Pipeline]
+  ✅ ConvoyEnv Dict Obs            ○ LR mode enabled           ► 6.1 RTT Recording (enhanced)
+  ✅ Deep Sets Policy              ○ Channel 6 set             ► 6.2 3-Car Convoy Recording
+  ✅ Emulator Causality Fix        ○ Range tests pending       ► 6.3 Augmentation Update
+  ✅ Training Pipeline                                          ► 6.4 Cone Filtering
+  ✅ Run 001 (80%, n=2 only)                                    ► 6.5 ML Finalization
+                                                                ► 6.6 Training Run 002 (PROD)
 
-[Phase 4: Training Pipeline]   [Cloud Training: Run 001]
-  ✅ COMPLETE                     ✅ COMPLETE (test run; 80% success, n=2 only)
-
-                              ► [Phase 5: Firmware Migration]
-                                ○ Phase 5.1 LR mode enabled + max TX power
-                                ○ Channel set to 6 for home testing
-                                ○ Extended range tests pending (10m/15m/20m)
-                              ► [Phase 6: Training Run 002]     ← NEW: Variable n, 10M steps
-                                ○ Dataset v2 with n ∈ {1,2,3,4,5}
-                                ○ EC2 AMI Creation (infra)
+CURRENT FOCUS: Phase 6.1 - Enhanced RTT Recording
+─────────────────────────────────────────────────────────────────────────────────
+  ○ Add GPS + magnetometer logging to RTT firmware
+  ○ Execute RTT recording at 1m, 5m, 10m, 15m, 20m, 30m
+  ○ Process → emulator_params_measured.json (network + sensor noise)
 ```
 
 ---
 
 ## Recent Achievements
+
+### Jan 24, 2026 - Real Data Pipeline Plan Finalized
+- **Two-recording strategy confirmed:** RTT (2 cars) for network params, Convoy (3 cars) for trajectory base
+- **RTT enhancement planned:** Add GPS + magnetometer logging for complete sensor noise characterization
+- **Clock sync analysis:** GPS NMEA time is ±100-500ms (OK for trajectory alignment, not for latency measurement)
+- **Data flow clarified:** SUMO provides ground truth → `to_v2v_message()` converts → Emulator adds noise
+- **Key finding:** `accel_y`, `accel_z`, `gyro_*` are hardcoded in sim, BUT observation builder only uses `accel_x` so this is OK
+- **Plan created:** `PHASE_6_REAL_DATA_PIPELINE.md` with 6 sub-phases to production model
+- **Diagrams:** Use case and data flow diagrams updated (user completed)
 
 ### Jan 23, 2026 - Professor Feedback Alignment (Docs + Plan)
 - **Hybrid data strategy documented:** real 3-car recording is the **mandatory base** for augmentation
@@ -137,11 +151,12 @@ COMPLETED                       CURRENT                         PLANNED
 
 | Document | Purpose | Priority |
 |----------|---------|----------|
+| `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` | **Production model path: recordings → training** | **CRITICAL - START HERE** |
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
-| `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps | **HIGH - START HERE** |
 | `docs/10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md` | Professor feedback response plan | **HIGH - ACTIVE** |
-| `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Create reusable training AMI | **HIGH - NEXT SESSION** |
-| `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | LR mode validation + range tests | HIGH - VALIDATION |
+| `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps (Phases 1-5) | HIGH - REFERENCE |
+| `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Create reusable training AMI | MEDIUM - AFTER PHASE 6 |
+| `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | LR mode validation + range tests | MEDIUM - PARALLEL |
 
 ### Completed Work (REFERENCE)
 
@@ -185,6 +200,21 @@ COMPLETED                       CURRENT                         PLANNED
 - DO keep all ESP-NOW devices on the same channel (default: 6 for home tests)
 - DO complete extended range tests before updating emulator params
 
+### January 24, 2026: Two-Recording Strategy for Real Data Collection
+
+**Decision:** Use separate recordings for network characterization (RTT) and trajectory data (3-car convoy).
+
+**Rationale:**
+1. RTT firmware measures precise round-trip time (same device timestamps both send and receive)
+2. 3-car convoy recording provides trajectory data but clock sync is ±100-500ms (GPS NMEA)
+3. Mixing both in one recording would compromise precision of network measurements
+4. RTT recording will be enhanced with GPS + magnetometer to capture sensor noise alongside network params
+
+**What this means for AI agents:**
+- DO use RTT recording output for `emulator_params_measured.json` (latency, loss, jitter, sensor noise)
+- DO use 3-car convoy recording for base augmentation scenario (trajectories only)
+- DO NOT try to measure latency from convoy recording (clock sync insufficient)
+
 ### January 23, 2026: Hybrid Data Strategy + Cone Filtering Clarification
 
 **Decision:** Ground augmentation in a real 3-car recording and apply cone filtering only on V001 **inside AI inference** before observation building.
@@ -203,10 +233,12 @@ COMPLETED                       CURRENT                         PLANNED
 ## For AI Agents: What To Do
 
 ### If returning after a break (start here)
-1. **Read:** `docs/10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md` (professor alignment plan)
+1. **Read:** `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` ► **IMMEDIATE PRIORITY**
 2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets + V001-only cone filter)
-3. **Read:** `docs/20_KNOWLEDGE_BASE/ML_AUGMENTATION_PIPELINE.md` (hybrid real-base pipeline)
-4. **First task:** Implement **V001-only cone filtering** in embedded inference and mirror in simulation observation builder
+3. **Current work:** Follow Phase 6 sub-phases in order:
+   - 6.1: Enhanced RTT recording (add GPS + mag)
+   - 6.2: 3-car convoy recording
+   - 6.3-6.6: Processing, cone filter, training
 
 ### If asked to work on ML/Training:
 1. **READ FIRST:** `DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (critical architecture)
@@ -271,5 +303,5 @@ COMPLETED                       CURRENT                         PLANNED
 
 ---
 
-**Document Version:** 1.2
+**Document Version:** 1.3
 **Maintained By:** Bookkeeper Agent

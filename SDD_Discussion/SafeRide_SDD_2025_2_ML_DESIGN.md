@@ -109,6 +109,9 @@ The emulator injects realistic communication impairments based on measured ESP32
 
 Domain Randomization: Training uses parameter ranges 1.5× wider than measured to ensure policy robustness.
 
+
+** Emulator in system architecture** its fine no comments about it
+
 4.1.6 Deployment on ESP32
 The model is split into two TFLite models for efficient inference:
 Peer_encoder.tflite - Called once per peer (n times)
