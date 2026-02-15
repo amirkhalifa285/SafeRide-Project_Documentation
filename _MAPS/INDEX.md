@@ -1,6 +1,6 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** January 24, 2026
+**Last Updated:** February 12, 2026
 **Total Documents:** 63
 
 ---
@@ -16,7 +16,7 @@
 │  ✅ RTT recording validated (drive test works)                               │
 │  ✅ Diagrams updated per professor feedback - Jan 24, 2026                  │
 │                                                                              │
-│  ► Phase 6.1: Enhanced RTT Recording (add GPS + mag)         ◄── NEXT      │
+│  ► Phase 6.1: Field validation for enhanced RTT + Mode 1 logs ◄── NEXT      │
 │  ► Phase 6.2: 3-Car Convoy Recording                                        │
 │  ► Phase 6.3: Augmentation Pipeline Update                                  │
 │  ► Phase 6.4: Cone Filtering (V001 front FOV)                               │
@@ -54,6 +54,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | Document | Display Name |
 |----------|--------------|
 | [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► IMMEDIATE PRIORITY (Jan 24) |
+| [AGENT_HANDOFF_FIELD_READINESS_PLAN.md](../10_PLANS_ACTIVE/AGENT_HANDOFF_FIELD_READINESS_PLAN.md) | **Field Readiness Handoff Plan** ► ACTIVE (Feb 12 implementation pass) |
 | [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | n-Element Deep Sets Implementation (Phases 1-5) |
 | [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) |
 | [DATALOGGER_ACCEL_UPDATE.md](../10_PLANS_ACTIVE/DATALOGGER_ACCEL_UPDATE.md) | DataLogger Accelerometer Update for Network Characterization |

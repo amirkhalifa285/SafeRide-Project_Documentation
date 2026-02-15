@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** January 24, 2026
+**Last Updated:** February 12, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -29,12 +29,12 @@ WHAT'S HAPPENING NOW:
      - Output: base scenario for dataset_v2
 
 IMMEDIATE NEXT STEPS:
-  1. Enhance RTT firmware to log GPS + magnetometer
+  1. Execute 2-board validation run with updated mag-enabled firmware
   2. Execute RTT recording at multiple distances
-  3. Execute 3-car convoy recording (5-10 min)
-  4. Process recordings → emulator params + base scenario
-  5. Implement cone filtering (V001 front FOV)
-  6. Generate dataset_v2 from real base
+  3. Process recording → emulator_params_measured.json
+  4. Acquire 3rd SD card and execute 3-car convoy recording (5-10 min)
+  5. Process convoy recording → base scenario for dataset_v2
+  6. Implement cone filtering (V001 front FOV)
   7. Training Run 002: 10M steps, production model
 
 KEY DOCUMENTS:
@@ -67,16 +67,27 @@ COMPLETED                       CURRENT                         PLANNED
   ✅ Run 001 (80%, n=2 only)                                    ► 6.5 ML Finalization
                                                                 ► 6.6 Training Run 002 (PROD)
 
-CURRENT FOCUS: Phase 6.1 - Enhanced RTT Recording
+CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 ─────────────────────────────────────────────────────────────────────────────────
-  ○ Add GPS + magnetometer logging to RTT firmware
+  ✅ GPS + magnetometer logging integrated in RTT + unified firmware
+  ✅ Mode 1 TX/RX logging schema upgraded (16 columns: accel+gyro+mag)
+  ✅ Test updates completed (user reports 92 tests passing)
   ○ Execute RTT recording at 1m, 5m, 10m, 15m, 20m, 30m
-  ○ Process → emulator_params_measured.json (network + sensor noise)
+  ○ Process → emulator_params_measured.json (network + sensor noise incl. mag)
 ```
 
 ---
 
 ## Recent Achievements
+
+### Feb 12, 2026 - Field Readiness Implementation Pass (Code + Tests)
+- **Production mag integration complete:** `main.cpp` now fills `msg.sensors.mag` from QMC5883L with graceful fallback to zeros on failure.
+- **Reusable mag driver added:** `hardware/src/sensors/mag/QMC5883LDriver.*` with shared-`Wire` initialization policy.
+- **RTT firmware refined:** sender now logs mag data; `RTTPacket` extended with mag and GPS quality fields while preserving 90-byte packet size.
+- **Mode 1 logging expanded:** TX/RX CSV upgraded from 10 to 16 columns (accel + gyro + mag).
+- **Analysis pipeline updated:** `analyze_rtt_characterization.py` parses mag columns and outputs `sensor_noise.mag_std_ut` + mag-derived `heading_std_deg`.
+- **Test updates complete:** related RTT/DataLogger/sensor tests updated, plus new QMC driver test suite added; user reports **92 tests passing**.
+- **Remaining work:** two-board dry run + regenerated measured emulator params + field-day checklist.
 
 ### Jan 24, 2026 - Real Data Pipeline Plan Finalized
 - **Two-recording strategy confirmed:** RTT (2 cars) for network params, Convoy (3 cars) for trajectory base
@@ -145,6 +156,7 @@ CURRENT FOCUS: Phase 6.1 - Enhanced RTT Recording
 |------|---------|--------|
 | `ml/espnow_emulator/emulator_params_5m.json` | **CURRENT** - Valid 5m stationary test data | Use for ConvoyEnv |
 | `ml/espnow_emulator/emulator_params.json` | Copy of 5m params (or link) | Active |
+| `ml/espnow_emulator/emulator_params_measured.json` | **NEXT TARGET** - Regenerated from updated RTT capture (with mag noise) | Pending new 2-board capture |
 | `ml/espnow_emulator/emulator_params_LR_final.json` | **FUTURE** - After LR mode + clean drive | Not yet created |
 
 ### Active Plans (CHECK THESE)
@@ -236,7 +248,7 @@ CURRENT FOCUS: Phase 6.1 - Enhanced RTT Recording
 1. **Read:** `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` ► **IMMEDIATE PRIORITY**
 2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets + V001-only cone filter)
 3. **Current work:** Follow Phase 6 sub-phases in order:
-   - 6.1: Enhanced RTT recording (add GPS + mag)
+   - 6.1: Enhanced RTT recording (code complete; execute field validation + capture)
    - 6.2: 3-car convoy recording
    - 6.3-6.6: Processing, cone filter, training
 

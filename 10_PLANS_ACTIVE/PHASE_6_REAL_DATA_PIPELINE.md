@@ -20,6 +20,8 @@ This plan addresses the professor's critical feedback: training must be grounded
 - [x] RTT firmware validated (5m stationary test complete)
 - [x] RTT processing script works
 - [x] DataLogger Mode 1 (TX/RX) code exists
+- [x] Phase 6.1 firmware/logging implementation integrated (Feb 12, 2026)
+- [x] Test suite updated and passing on user machine (92 tests)
 - [ ] 3 ESP32 units with SD cards ready
 - [ ] Safe location for convoy recording identified
 
@@ -28,6 +30,11 @@ This plan addresses the professor's critical feedback: training must be grounded
 ## Phase 6.1: Enhanced RTT Recording
 
 **Objective:** Capture network characteristics AND sensor noise in one recording.
+
+Status (Feb 12, 2026):
+- [x] 6.1.1 code changes complete
+- [ ] 6.1.2 field capture pending
+- [ ] 6.1.3 measured params regeneration pending
 
 ### 6.1.1 Enhance RTT Firmware with GPS + Mag Logging
 
@@ -67,7 +74,7 @@ hdop,satellites,lost
 
 ### 6.1.3 Process RTT Recording
 
-**Script:** `ml/scripts/process_rtt_log.py` (exists)
+**Script:** `ml/scripts/analyze_rtt_characterization.py` (updated for mag analysis)
 
 **Output:** Updated `ml/espnow_emulator/emulator_params_measured.json`
 ```json
