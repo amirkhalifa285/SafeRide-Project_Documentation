@@ -1,8 +1,8 @@
 # Hardware Firmware Implementation Progress
 
 **Project:** RoadSense V2V Enhanced System
-**Status:** Active (Phase 6.1: Field Readiness Implementation)
-**Last Updated:** February 12, 2026
+**Status:** Active (Phase 6.1: RTT Capture Pending)
+**Last Updated:** February 15, 2026
 
 ---
 
@@ -32,9 +32,11 @@
 - [x] Updated related tests; user-reported test result: 92 tests passing
 
 ### 2. Hardware Validation (Pending)
-- [ ] Run two-board dry run (static + motion) with SD cards
-- [ ] Verify TX/RX files per board with 16-column headers and non-zero `mag_x/y/z`
+- [x] Run two-board dry run with SD cards (button start/stop workflow validated)
+- [x] Verify TX/RX files per board with 16-column headers and non-zero `mag_x/y/z`
 - [ ] Regenerate `ml/espnow_emulator/emulator_params_measured.json` from fresh RTT capture
+  - Note: Feb 15 session artifacts under `/home/amirkhalifa/RoadSense2/RXTX_test_20261402/` passed row/header/monotonicity checks.
+  - Note: GPS fields were zero in this validation session; this was acceptable for RX/TX workflow verification but RTT capture should be run with GPS lock.
 
 ### 3. Convoy Recording Gate
 - [ ] Acquire 3rd microSD card before 3-car convoy recording (Phase 6.2 blocker)
@@ -45,6 +47,7 @@
 
 | Date | Milestone | Description |
 |------|-----------|-------------|
+| Feb 15, 2026 | 2-Board Mode 1 Validation | Button-controlled TX/RX logging verified on both boards; 16-column CSV + non-zero mag confirmed |
 | Feb 12, 2026 | Field Readiness Code Update | QMC5883L integrated into production + RTT paths; Mode 1 CSV and RTT analysis upgraded |
 | Jan 9, 2026 | RTT Field Drive | 20-min drive: 8710 rows, RTT 4-9ms, max 45 km/h |
 | Jan 5, 2026 | RTT Home Test | ESP-NOW RTT test passed, SD logging working |
@@ -63,8 +66,7 @@
 
 ## Next Steps
 
-1. Execute 2-board validation session for updated Mode 1 logs.
-2. Run refreshed RTT capture and regenerate measured emulator parameters.
+1. Run refreshed RTT capture and regenerate measured emulator parameters.
+2. Verify RTT capture includes valid GPS columns where required for downstream analysis.
 3. Complete field-day checklist and artifact verification package.
 4. Proceed to 3-car convoy base recording once 3rd SD card is available.
-

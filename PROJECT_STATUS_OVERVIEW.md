@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** February 12, 2026
+**Last Updated:** February 15, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -29,13 +29,12 @@ WHAT'S HAPPENING NOW:
      - Output: base scenario for dataset_v2
 
 IMMEDIATE NEXT STEPS:
-  1. Execute 2-board validation run with updated mag-enabled firmware
-  2. Execute RTT recording at multiple distances
-  3. Process recording → emulator_params_measured.json
-  4. Acquire 3rd SD card and execute 3-car convoy recording (5-10 min)
-  5. Process convoy recording → base scenario for dataset_v2
-  6. Implement cone filtering (V001 front FOV)
-  7. Training Run 002: 10M steps, production model
+  1. Execute RTT recording at multiple distances
+  2. Process recording → emulator_params_measured.json
+  3. Acquire 3rd SD card and execute 3-car convoy recording (5-10 min)
+  4. Process convoy recording → base scenario for dataset_v2
+  5. Implement cone filtering (V001 front FOV)
+  6. Training Run 002: 10M steps, production model
 
 KEY DOCUMENTS:
   - **NEW:** 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md ► IMMEDIATE PRIORITY
@@ -72,6 +71,7 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
   ✅ GPS + magnetometer logging integrated in RTT + unified firmware
   ✅ Mode 1 TX/RX logging schema upgraded (16 columns: accel+gyro+mag)
   ✅ Test updates completed (user reports 92 tests passing)
+  ✅ 2-board Mode 1 button workflow validated (start/stop + TX/RX file integrity)
   ○ Execute RTT recording at 1m, 5m, 10m, 15m, 20m, 30m
   ○ Process → emulator_params_measured.json (network + sensor noise incl. mag)
 ```
@@ -80,6 +80,13 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 
 ## Recent Achievements
 
+### Feb 15, 2026 - 2-Board Mode 1 Validation Pass (Hardware Session)
+- **Button workflow verified end-to-end:** both boards successfully started/stopped logging from GPIO button presses.
+- **Artifacts validated:** `V001_tx_003.csv`, `V001_rx_003.csv`, `V002_tx_001.csv`, `V002_rx_001.csv` in `RXTX_test_20261402/`.
+- **CSV integrity checks passed:** 16-column headers/rows, monotonic local timestamps, non-zero magnetometer columns in TX/RX files.
+- **Session result:** Mode 1 RX/TX logging reliability confirmed for field workflow.
+- **Carry-forward note:** RTT capture + `emulator_params_measured.json` regeneration still pending.
+
 ### Feb 12, 2026 - Field Readiness Implementation Pass (Code + Tests)
 - **Production mag integration complete:** `main.cpp` now fills `msg.sensors.mag` from QMC5883L with graceful fallback to zeros on failure.
 - **Reusable mag driver added:** `hardware/src/sensors/mag/QMC5883LDriver.*` with shared-`Wire` initialization policy.
@@ -87,7 +94,7 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 - **Mode 1 logging expanded:** TX/RX CSV upgraded from 10 to 16 columns (accel + gyro + mag).
 - **Analysis pipeline updated:** `analyze_rtt_characterization.py` parses mag columns and outputs `sensor_noise.mag_std_ut` + mag-derived `heading_std_deg`.
 - **Test updates complete:** related RTT/DataLogger/sensor tests updated, plus new QMC driver test suite added; user reports **92 tests passing**.
-- **Remaining work:** two-board dry run + regenerated measured emulator params + field-day checklist.
+- **Remaining work:** regenerated measured emulator params + field-day checklist.
 
 ### Jan 24, 2026 - Real Data Pipeline Plan Finalized
 - **Two-recording strategy confirmed:** RTT (2 cars) for network params, Convoy (3 cars) for trajectory base

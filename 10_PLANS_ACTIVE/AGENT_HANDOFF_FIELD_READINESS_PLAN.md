@@ -39,7 +39,7 @@ Primary objectives:
 
 ---
 
-## 2.1) Execution Status Snapshot (Feb 12, 2026)
+## 2.1) Execution Status Snapshot (Feb 15, 2026)
 
 - [x] **Phase A complete in code**: QMC driver + production firmware + RTT sender + RTT packet/logging + platformio wiring.
 - [x] **Phase B1 complete in code**: Mode 1 TX/RX CSV extended to 16 columns (gyro+mag).
@@ -49,7 +49,7 @@ Primary objectives:
   - sensor integration assertion for non-zero outgoing mag
   - Mode 1 CSV column-count checks
 - [x] **Phase D3 complete in code**: RTT analysis script extended for magnetometer noise + heading std.
-- [ ] **Phase B2 pending (hardware session)**: 2-board TX/RX dry runs with SD cards.
+- [x] **Phase B2 complete (hardware session)**: 2-board TX/RX button workflow validated with SD cards (artifacts: `RXTX_test_20261402/`).
 - [x] **Phase C2 complete (user verification)**: user reports full test suite pass (**92 tests passing**).
 - [ ] **Phase D4-D5 pending (hardware capture + processing)**: regenerate `emulator_params_measured.json` from fresh 2-board RTT capture.
 - [ ] **Phase E pending documentation package**: operator checklist + artifact checklist + on-site integrity checks.
@@ -314,11 +314,11 @@ Ready for outdoor convoy only if **all** are true:
 8. Field checklist and expected artifacts are documented and verified in a dry run.
 9. **Blocker for convoy (not for this plan):** 3rd microSD card acquired.
 
-Status snapshot (Feb 12, 2026):
+Status snapshot (Feb 15, 2026):
 - [x] Item 1 complete
-- [ ] Item 2 pending field capture confirmation (code path complete; needs fresh 2-board log proof)
+- [ ] Item 2 pending RTT-side confirmation (Mode 1 TX/RX logs now confirmed with non-zero mag; RTT capture still pending)
 - [x] Item 3 complete
-- [ ] Item 4 pending board session
+- [x] Item 4 complete (button start/stop + TX/RX files validated on both boards)
 - [x] Item 5 complete (user reported 92 tests passing)
 - [ ] Item 6 pending refreshed capture + processing
 - [x] Item 7 complete
