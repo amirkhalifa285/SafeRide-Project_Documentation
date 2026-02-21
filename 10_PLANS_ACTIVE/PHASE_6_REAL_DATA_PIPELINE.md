@@ -31,10 +31,10 @@ This plan addresses the professor's critical feedback: training must be grounded
 
 **Objective:** Capture network characteristics AND sensor noise in one recording.
 
-Status (Feb 12, 2026):
+Status (Updated Feb 20, 2026):
 - [x] 6.1.1 code changes complete
-- [ ] 6.1.2 field capture pending
-- [ ] 6.1.3 measured params regeneration pending
+- [x] 6.1.2 field capture complete
+- [x] 6.1.3 measured params regeneration complete
 
 ### 6.1.1 Enhance RTT Firmware with GPS + Mag Logging
 
@@ -68,9 +68,9 @@ hdop,satellites,lost
 5. Include some walking/driving segments for dynamic data
 
 **Exit Criteria:**
-- [ ] `/rtt_log.csv` with 5000+ rows
-- [ ] Loss rate data at multiple distances
-- [ ] GPS, IMU, and magnetometer columns populated
+- [x] `/rtt_log.csv` with 5000+ rows
+- [x] Loss rate data at multiple distances
+- [x] GPS, IMU, and magnetometer columns populated
 
 ### 6.1.3 Process RTT Recording
 
@@ -98,6 +98,17 @@ hdop,satellites,lost
   }
 }
 ```
+
+**Completion Note (Feb 20, 2026):**
+- RTT drive log captured at `/home/amirkhalifa/RoadSense2/rtt_log.csv` (~20k rows).
+- Final measured params written to `roadsense-v2v/ml/espnow_emulator/emulator_params_measured.json`.
+- Calibration approach used:
+  - Network/loss/latency from drive-core window (startup and shutdown outage windows excluded)
+  - Sensor noise from a clean stationary window for valid GPS/IMU/mag variance extraction
+- Supporting artifacts saved under:
+  - `roadsense-v2v/ml/data/rtt_analysis_2026_02_20_deir_hanna_tiberias/`
+  - `roadsense-v2v/ml/data/rtt_analysis_2026_02_20_deir_hanna_tiberias_core/`
+  - `roadsense-v2v/ml/data/rtt_analysis_2026_02_20_deir_hanna_tiberias_stationary_60_200/`
 
 ---
 
@@ -269,7 +280,7 @@ def is_in_cone(ego_heading_deg, bearing_to_peer_deg, half_angle=45.0) -> bool:
 
 ### 6.6.1 Pre-flight Checklist
 
-- [ ] `emulator_params_measured.json` created from RTT recording
+- [x] `emulator_params_measured.json` created from RTT recording
 - [ ] `dataset_v2` generated from real convoy base
 - [ ] Cone filtering integrated in ConvoyEnv
 - [ ] EC2 instance ready (or local GPU)

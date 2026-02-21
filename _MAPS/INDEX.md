@@ -1,6 +1,6 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** February 12, 2026
+**Last Updated:** February 20, 2026
 **Total Documents:** 63
 
 ---
@@ -13,11 +13,12 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ✅ Phases 1-4: ML Architecture COMPLETE (Deep Sets, ConvoyEnv, Emulator)   │
 │  ✅ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026                  │
-│  ✅ RTT recording validated (drive test works)                               │
+│  ✅ RTT characterization complete (measured params regenerated)              │
 │  ✅ Diagrams updated per professor feedback - Jan 24, 2026                  │
+│  ✅ EC2 Training AMI created (ami-03a3037588b0f34f2) - Feb 20, 2026        │
 │                                                                              │
-│  ► Phase 6.1: Field validation for enhanced RTT + Mode 1 logs ◄── NEXT      │
-│  ► Phase 6.2: 3-Car Convoy Recording                                        │
+│  ✅ Phase 6.1: Enhanced RTT capture + processing complete                    │
+│  ► Phase 6.2: 3-Car Convoy Recording ◄── NEXT                               │
 │  ► Phase 6.3: Augmentation Pipeline Update                                  │
 │  ► Phase 6.4: Cone Filtering (V001 front FOV)                               │
 │  ► Phase 6.5: ML Code Finalization                                          │
@@ -64,8 +65,8 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [QUANTIZATION_DUAL_TRACK_PLAN.md](../10_PLANS_ACTIVE/QUANTIZATION_DUAL_TRACK_PLAN.md) | Quantization Dual-Track Plan (PTQ + QAT) |
 | [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Cloud Training Pipeline Proposal (Draft) |
 | [CLOUD_TRAINING_PIPELINE_VERDICT.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Cloud Training Pipeline Verdict (Approved with Conditions) |
-| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Cloud Training AWS Execution Plan ✅ RUN 001 COMPLETE |
-| [EC2_AMI_CREATION_PLAN.md](../10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md) | **EC2 AMI Creation Plan** ► NEXT SESSION |
+| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Cloud Training AWS Execution Plan ✅ RUN 001 COMPLETE, Run 002 READY |
+| [EC2_AMI_CREATION_PLAN.md](../10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md) | **EC2 AMI Creation Plan** ✅ COMPLETED (ami-03a3037588b0f34f2) |
 
 ### RTT Implementation (Subdirectory)
 | Document | Display Name |
@@ -186,9 +187,9 @@ Implemented/completed plans, approved code reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES (In Order)
-1. **Phase 5: Firmware Migration** - Port Deep Sets inference to ESP32 ► NEXT
-2. **Phase 6: Training Run 002** - 10M steps with variable n (n ∈ {1,2,3,4,5}) ► NEW
-3. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (After firmware port)
+1. **Phase 6.2: 3-Car Convoy Base Recording** - collect real base trajectory data for augmentation
+2. **Phase 6.3-6.6: Dataset v2 + Run 002** - generate real-grounded dataset and train 10M-step production model
+3. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (parallel/after Run 002)
 
 ### RECENTLY COMPLETED
 - ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)

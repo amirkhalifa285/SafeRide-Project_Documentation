@@ -1,20 +1,20 @@
 # AWS Cloud Training Execution Plan (RoadSense V2V)
 
-**Status:** FIRST RUN IN PROGRESS
-**Goal:** Run full RL training (5M+ steps) on AWS while maintaining a strict $20/month budget.
+**Status:** ACTIVE - Preparing Run 002
+**Goal:** Run full RL training on AWS while maintaining a strict $20/month budget.
 **Architect:** Master Architect (Interactive CLI)
-**Last Updated:** January 16, 2026
+**Last Updated:** February 20, 2026
 
 ---
 
-## 🎯 Current Run Status
+## 🎯 Run Status
 
-| Run ID | Instance | Started | Status |
-|--------|----------|---------|--------|
-| cloud_prod_001 | c6i.xlarge (On-Demand) | Jan 16, 2026 | **TRAINING** |
+| Run ID | Instance | Started | Timesteps | Status |
+|--------|----------|---------|-----------|--------|
+| cloud_prod_001 | c6i.xlarge (On-Demand) | Jan 16, 2026 | 5M | **COMPLETED** (80% eval, n=2 only) |
+| cloud_prod_002 | c6i.xlarge (AMI-based) | TBD | 10M | **NEXT** |
 
-**Expected completion:** ~24-48 hours from start.
-**Results location:** `s3://saferide-training-results/cloud_prod_001/`
+**Run 002 results location:** `s3://saferide-training-results/cloud_prod_002/`
 
 ---
 
@@ -74,7 +74,7 @@ apt-get update && apt-get install -y docker.io awscli git
 systemctl enable --now docker
 
 # 2. Code Acquisition (replace <PAT> locally before pasting)
-git clone https://<PAT>@github.com/amirkhalifa285/SafeRide.git /home/ubuntu/work
+git clone https://<PAT>@github.com/roadsense-team/roadsense-v2v.git /home/ubuntu/work
 cd /home/ubuntu/work/ml
 
 # 3. Dataset Generation
@@ -145,3 +145,48 @@ shutdown -h now
 **Decision:** Used On-Demand instead of Spot for first run.
 
 **Rationale:** Spot can be interrupted mid-training. For a critical first validation run, On-Demand (~$0.20/hr) is worth the extra cost for reliability. Consider Spot for subsequent runs where interruption is acceptable.
+
+---
+
+## 🚀 Run 002: Production Model (Synthetic Base)
+
+### What Changed from Run 001
+
+| Aspect | Run 001 | Run 002 |
+|--------|---------|---------|
+| Timesteps | 5M | **10M** |
+| Dataset | dataset_v1 (constant n=2) | **dataset_v2 (variable n={1..5})** |
+| Emulator params | emulator_params_5m.json | **emulator_params_measured.json** (real RTT drive) |
+| Launch method | Raw user-data (15 min setup) | **AMI-based (~2 min setup)** |
+| Augmentation | Speed/decel variation only | **+ peer dropout + route randomization** |
+
+### Launch Procedure (AMI-Based)
+
+1. **Pre-flight:** Push latest code to GitHub (SafeRide repo)
+2. **Launch:** EC2 console -> Launch from `roadsense-training-v1` AMI
+   - Instance: c6i.xlarge, il-central-1
+   - IAM role: RoadSense-Trainer-Role
+   - User data: paste contents of `ml/scripts/cloud/run_training.sh` (with PAT filled in)
+   - Security group: SSH from your IP only
+3. **Monitor (optional):** SSH in, `tail -f /var/log/training-run.log`
+4. **Results:** Auto-uploaded to `s3://saferide-training-results/cloud_prod_002/`
+5. **Instance self-terminates** after training + upload
+
+### Training Config
+
+```
+Algorithm:        PPO with Deep Sets
+Total Timesteps:  10,000,000 (~48h on c6i.xlarge)
+Learning Rate:    3e-4
+Batch Size:       2048
+Entropy Coeff:    0.01
+Dataset:          dataset_v2/base_01 (16 train / 4 eval, variable n)
+Emulator:         emulator_params_measured.json (Feb 20 RTT drive)
+```
+
+### Cost Estimate
+
+- c6i.xlarge On-Demand: ~$0.20/hr x 48h = **~$10**
+- S3 storage: negligible
+- AMI storage: ~$0.50/month
+- **Total: ~$11** (within $20 budget)

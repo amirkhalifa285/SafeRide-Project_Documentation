@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** February 15, 2026
+**Last Updated:** February 20, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -22,19 +22,27 @@ WHAT'S HAPPENING NOW:
      - Network characterization: latency, packet loss, jitter
      - Sensor noise: GPS, IMU, magnetometer variance
      - Output: emulator_params_measured.json
+     - Status: ✅ Completed Feb 20, 2026
 
   2. 3-CAR CONVOY RECORDING (3 vehicles):
      - Real trajectory data for augmentation base
      - Professor requires real data, not pure synthetic
      - Output: base scenario for dataset_v2
+     - Status: ⏳ Next critical step
 
 IMMEDIATE NEXT STEPS:
-  1. Execute RTT recording at multiple distances
-  2. Process recording → emulator_params_measured.json
-  3. Acquire 3rd SD card and execute 3-car convoy recording (5-10 min)
-  4. Process convoy recording → base scenario for dataset_v2
-  5. Implement cone filtering (V001 front FOV)
-  6. Training Run 002: 10M steps, production model
+  1. Acquire 3rd SD card and execute 3-car convoy recording (5-10 min)
+  2. Process convoy recording → base scenario for dataset_v2
+  3. Generate dataset_v2 using emulator_params_measured.json
+  4. Implement cone filtering (V001 front FOV)
+  5. Training Run 002: 10M steps, production model
+  6. Training Run 002b: Real-data base comparison run
+
+TRAINING STRATEGY (Feb 20 decision):
+  - Run 002:  Synthetic base scenarios + measured emulator params
+  - Run 002b: Real convoy base scenarios + same emulator params
+  - Compare both to evaluate real vs synthetic data impact
+  - AMI ready: ami-03a3037588b0f34f2 (roadsense-training-v1)
 
 KEY DOCUMENTS:
   - **NEW:** 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md ► IMMEDIATE PRIORITY
@@ -59,26 +67,43 @@ COMPLETED                       CURRENT                         PLANNED
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [Phase 5: Firmware]            [Phase 6: Real Data Pipeline]
-  ✅ ConvoyEnv Dict Obs            ○ LR mode enabled           ► 6.1 RTT Recording (enhanced)
+  ✅ ConvoyEnv Dict Obs            ○ LR mode enabled           ✅ 6.1 RTT Recording (enhanced)
   ✅ Deep Sets Policy              ○ Channel 6 set             ► 6.2 3-Car Convoy Recording
   ✅ Emulator Causality Fix        ○ Range tests pending       ► 6.3 Augmentation Update
   ✅ Training Pipeline                                          ► 6.4 Cone Filtering
   ✅ Run 001 (80%, n=2 only)                                    ► 6.5 ML Finalization
-                                                                ► 6.6 Training Run 002 (PROD)
+  ✅ EC2 Training AMI                                           ► 6.6 Training Run 002 (PROD)
+                                                                ► 6.7 Training Run 002b (comparison)
 
-CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
+CURRENT FOCUS: Phase 6.2 - 3-Car Convoy Recording (Base Scenario Capture)
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ GPS + magnetometer logging integrated in RTT + unified firmware
   ✅ Mode 1 TX/RX logging schema upgraded (16 columns: accel+gyro+mag)
   ✅ Test updates completed (user reports 92 tests passing)
   ✅ 2-board Mode 1 button workflow validated (start/stop + TX/RX file integrity)
-  ○ Execute RTT recording at 1m, 5m, 10m, 15m, 20m, 30m
-  ○ Process → emulator_params_measured.json (network + sensor noise incl. mag)
+  ✅ Execute RTT drive and regenerate emulator_params_measured.json
+  ○ Execute 3-car convoy base recording and process into base_real scenario
 ```
 
 ---
 
 ## Recent Achievements
+
+### Feb 20, 2026 - EC2 Training AMI Created + Comparison Strategy Decided
+- **AMI created:** `ami-03a3037588b0f34f2` (`roadsense-training-v1`) in il-central-1.
+- **Contents:** Ubuntu 22.04 + Docker + `roadsense-ml:latest` image pre-built. Launch-to-training: ~2 min.
+- **Cloud scripts added:** `ml/scripts/cloud/setup_ami.sh` (AMI builder) + `run_training.sh` (runtime user-data template).
+- **Execution plan updated:** Run 002 config documented (10M steps, measured emulator params, dataset_v2 with variable n).
+- **Training comparison strategy decided:** Train on synthetic base (Run 002) AND real convoy base (Run 002b), compare results. Addresses professor's real-data requirement with empirical evidence.
+- **Repo clarification:** Cloud scripts corrected to use `roadsense-team/roadsense-v2v` repo, `master` branch.
+
+### Feb 20, 2026 - RTT Drive Characterization Complete (Deir Hanna → Tiberias)
+- **Field log captured:** `/home/amirkhalifa/RoadSense2/rtt_log.csv` with 20k+ rows and valid GPS/IMU/mag columns.
+- **Measured params generated:** `roadsense-v2v/ml/espnow_emulator/emulator_params_measured.json`.
+- **Calibration method:** network stats from drive-core interval; sensor-noise stats from a clean stationary window to avoid mixed-location stop bias.
+- **Representative network metrics (drive-core):** RTT mean 8.0ms, p95 12ms; one-way mean 4.0ms.
+- **Representative loss metrics (drive-core):** overall 33.4%, with burst-loss behavior captured for emulator robustness.
+- **n-element guardrail applied:** removed `observation.monitored_vehicles` from RTT-generated params output to avoid fixed-peer confusion with Deep Sets training.
 
 ### Feb 15, 2026 - 2-Board Mode 1 Validation Pass (Hardware Session)
 - **Button workflow verified end-to-end:** both boards successfully started/stopped logging from GPIO button presses.
@@ -163,7 +188,7 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 |------|---------|--------|
 | `ml/espnow_emulator/emulator_params_5m.json` | **CURRENT** - Valid 5m stationary test data | Use for ConvoyEnv |
 | `ml/espnow_emulator/emulator_params.json` | Copy of 5m params (or link) | Active |
-| `ml/espnow_emulator/emulator_params_measured.json` | **NEXT TARGET** - Regenerated from updated RTT capture (with mag noise) | Pending new 2-board capture |
+| `ml/espnow_emulator/emulator_params_measured.json` | **CURRENT FOR RUN 002** - Regenerated from Feb 20 RTT drive (latency/loss + mag-aware sensor noise) | Ready for training |
 | `ml/espnow_emulator/emulator_params_LR_final.json` | **FUTURE** - After LR mode + clean drive | Not yet created |
 
 ### Active Plans (CHECK THESE)
@@ -174,7 +199,7 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
 | `docs/10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md` | Professor feedback response plan | **HIGH - ACTIVE** |
 | `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps (Phases 1-5) | HIGH - REFERENCE |
-| `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Create reusable training AMI | MEDIUM - AFTER PHASE 6 |
+| `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Reusable training AMI | **COMPLETED** (ami-03a3037588b0f34f2) |
 | `docs/10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md` | LR mode validation + range tests | MEDIUM - PARALLEL |
 
 ### Completed Work (REFERENCE)
@@ -187,6 +212,23 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 ---
 
 ## Decision Log
+
+### February 20, 2026: Synthetic vs Real-Data Comparison Training Strategy
+
+**Decision:** Train two models (Run 002 on synthetic base, Run 002b on real convoy base) with identical augmentation and emulator params, then compare results.
+
+**Rationale:**
+1. Professor requires real-world data grounding, but practical ML impact is debatable
+2. A controlled comparison provides empirical evidence rather than argument
+3. Both models use the same measured emulator params (real RTT drive) and augmentation flags
+4. The only variable is the base scenario source (synthetic SUMO vs real GPS recording)
+5. Either outcome is a publishable thesis finding
+
+**What this means for AI agents:**
+- Run 002 uses existing synthetic base scenarios (`ml/scenarios/base_01`)
+- Run 002b uses real convoy recording (after 3-car drive is completed and processed)
+- SAME augmentation flags, emulator params, hyperparameters for both
+- Compare on: success rate, reward, collision rate, generalization across peer counts
 
 ### January 10, 2026: Pipeline-First Approach
 
@@ -255,8 +297,8 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 1. **Read:** `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` ► **IMMEDIATE PRIORITY**
 2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets + V001-only cone filter)
 3. **Current work:** Follow Phase 6 sub-phases in order:
-   - 6.1: Enhanced RTT recording (code complete; execute field validation + capture)
-   - 6.2: 3-car convoy recording
+   - 6.1: Enhanced RTT recording ✅ complete (capture + params regeneration)
+   - 6.2: 3-car convoy recording ◄ active next step
    - 6.3-6.6: Processing, cone filter, training
 
 ### If asked to work on ML/Training:
@@ -322,5 +364,5 @@ CURRENT FOCUS: Phase 6.1 - Field Validation for Enhanced RTT + Mode 1 Logging
 
 ---
 
-**Document Version:** 1.3
+**Document Version:** 1.4
 **Maintained By:** Bookkeeper Agent
