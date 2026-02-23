@@ -12,7 +12,7 @@
 | Run ID | Instance | Started | Timesteps | Status |
 |--------|----------|---------|-----------|--------|
 | cloud_prod_001 | c6i.xlarge (On-Demand) | Jan 16, 2026 | 5M | **COMPLETED** (80% eval, n=2 only) |
-| cloud_prod_002 | c6i.xlarge (AMI-based) | TBD | 10M | **NEXT** |
+| cloud_prod_002 | c6i.xlarge (AMI-based, On-Demand) | Feb 21, 2026 | 10M | **TRAINING** |
 
 **Run 002 results location:** `s3://saferide-training-results/cloud_prod_002/`
 
@@ -145,6 +145,109 @@ shutdown -h now
 **Decision:** Used On-Demand instead of Spot for first run.
 
 **Rationale:** Spot can be interrupted mid-training. For a critical first validation run, On-Demand (~$0.20/hr) is worth the extra cost for reliability. Consider Spot for subsequent runs where interruption is acceptable.
+
+---
+
+## 📝 Lessons Learned (Feb 20-21, 2026 - AMI Creation + Run 002 Launch)
+
+### Wrong GitHub Repository URL (CRITICAL)
+**Problem:** Scripts and docs referenced `amirkhalifa285/SafeRide.git` (old personal repo from Run 001) instead of the actual team repo.
+
+**Root Cause:** Copied URL from stale Run 001 docs without verifying the local git remote.
+
+**Fix:**
+- ✅ Correct repo: `roadsense-team/roadsense-v2v.git`
+- ❌ Wrong repo: `amirkhalifa285/SafeRide.git`
+- **ALWAYS** check `git remote -v` in the local repo before writing cloud scripts.
+
+### Wrong Default Branch Name
+**Problem:** Scripts used `git pull origin main` but the repo's default branch is `master`.
+
+**Root Cause:** Assumed `main` without checking. The repo uses `master`.
+
+**Fix:**
+- ✅ Correct: `git pull origin master`
+- ❌ Wrong: `git pull origin main`
+- **ALWAYS** check `git branch -a` before writing scripts that reference branch names.
+
+### Git "Dubious Ownership" Error on AMI Instance
+**Problem:** User-data script (runs as root) failed on `git pull` because the repo was cloned by the `ubuntu` user during AMI setup. Git's safe directory check blocked root from operating on it.
+
+**Root Cause:** AMI setup ran as `ubuntu` user, but EC2 user-data scripts run as `root`.
+
+**Fix:** Add to the user-data script BEFORE any git commands:
+```bash
+git config --global --add safe.directory /home/ubuntu/work
+```
+**Prevention:** Bake this into the AMI setup script so future AMIs don't have this issue.
+
+### run_docker.sh Permission Denied
+**Problem:** `./ml/run_docker.sh` failed with "Permission denied" when run from user-data.
+
+**Root Cause:** Git doesn't always preserve execute permissions across clone/pull, especially when root runs a script owned by another user.
+
+**Fix:** Add to user-data script before calling run_docker.sh:
+```bash
+chmod +x /home/ubuntu/work/ml/run_docker.sh
+```
+**Prevention:** Bake `chmod +x` into the user-data template.
+
+### S3 Upload + Shutdown Never Ran (CRITICAL)
+**Problem:** Training completed successfully but S3 upload and `shutdown -h now` never executed. Instance kept running (wasting money), results stuck on disk.
+
+**Root Cause:** `set -euo pipefail` at the top of the script. When `run_docker.sh train` exited with a non-zero code (even though training succeeded), bash killed the entire script. Every command after training was skipped.
+
+**Fix:** Two changes to `run_training.sh`:
+1. Use a `trap cleanup EXIT` handler that ALWAYS runs S3 upload and shutdown, regardless of how the script exits.
+2. Disable `set -e` before the training step (`set +e`), capture the exit code, then re-enable.
+
+### IAM Credentials Not Available
+**Problem:** Manual `aws s3 cp` also failed with "Unable to locate credentials".
+
+**Root Cause:** Either the IAM role (RoadSense-Trainer-Role) was not attached at launch, or instance metadata was not accessible.
+
+**Fix:**
+- **ALWAYS** verify IAM role is attached: check "IAM instance profile" in the launch wizard.
+- Add to pre-launch checklist: verify credentials work with `curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/`
+- As a fallback, `scp` results directly to your laptop if S3 fails.
+
+### Base Scenario Path Mismatch
+**Problem:** Script referenced `ml/scenarios/base_01` but the actual directory is `ml/scenarios/base`.
+
+**Root Cause:** CLAUDE.md canonical command used a planned name (`base_01`) that was never created.
+
+**Fix:** Always verify paths exist with `ls` before writing them into scripts.
+
+### AMI Setup Script vs Manual Commands
+**Lesson:** The `setup_ami.sh` script had multiple issues (wrong repo, wrong branch) that would have failed silently as user-data. Running setup via SSH manually was the right call - it let us catch and fix errors interactively.
+
+**Recommendation for future AMI rebuilds:**
+1. Always run setup interactively via SSH first
+2. Only automate via user-data once all commands are proven
+
+---
+
+## ⚠️ Pre-Launch Checklist (USE THIS EVERY TIME)
+
+Before launching any training run, verify ALL of the following:
+
+```
+[ ] Code pushed to GitHub (roadsense-team/roadsense-v2v, master branch)
+[ ] PAT is valid: test with `git ls-remote https://<PAT>@github.com/roadsense-team/roadsense-v2v.git`
+[ ] Base scenario dir exists in repo (check with: ls ml/scenarios/base/)
+[ ] Emulator params file exists in repo (check with: ls ml/espnow_emulator/emulator_params_measured.json)
+[ ] User-data script includes: git config --global --add safe.directory /home/ubuntu/work
+[ ] User-data script includes: chmod +x ml/run_docker.sh (before calling it)
+[ ] User-data uses correct repo: roadsense-team/roadsense-v2v.git
+[ ] User-data uses correct branch: master (NOT main)
+[ ] User-data uses correct base path: ml/scenarios/base (NOT base_01)
+[ ] --output_dir uses CONTAINER path: /work/results (NOT /home/ubuntu/work/results)
+[ ] Security group SSH rule uses IP from: curl -4 ifconfig.me
+[ ] IAM role attached: RoadSense-Trainer-Role
+[ ] After launch, verify IAM creds: curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/
+[ ] Script uses trap cleanup EXIT (NOT set -euo pipefail for the whole script)
+[ ] Training step uses set +e to avoid killing S3 upload and shutdown
+```
 
 ---
 

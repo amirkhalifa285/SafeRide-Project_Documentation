@@ -300,10 +300,11 @@ python ml/scripts/train.py \
 
 ### 6.6.3 Success Criteria
 
-- [ ] Training completes 10M timesteps
-- [ ] Eval success rate > 85% (target: 90%+)
-- [ ] Model handles variable n (tested on n=1,2,3,4,5)
-- [ ] No regression on n=2 (compare to Run 001)
+- [x] Training completes 10M timesteps ✅ (Run 002, Feb 21 2026)
+- [x] Eval success rate > 85% (target: 90%+) ✅ 100% success, 0/40 collisions, hazard_injection=True
+- [ ] Model handles variable n (tested on n=1,2,3,4,5) ⚠️ **BLOCKED: eval only covers n=1,2. Need eval scenarios for n=3,4,5.**
+- [ ] No regression on n=2 (compare to Run 001) — Run 001 eval artifact needed
+- [ ] Eval MUST run with `hazard_injection=True` ✅ (enforced as default since Feb 21 2026)
 
 ---
 

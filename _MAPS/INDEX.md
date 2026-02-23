@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** February 20, 2026
-**Total Documents:** 63
+**Last Updated:** February 21, 2026
+**Total Documents:** 64
 
 ---
 
@@ -13,6 +13,7 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ✅ Phases 1-4: ML Architecture COMPLETE (Deep Sets, ConvoyEnv, Emulator)   │
 │  ✅ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026                  │
+│  ✅ Cloud Run 002: 40-episode eval evidence captured - Feb 21, 2026         │
 │  ✅ RTT characterization complete (measured params regenerated)              │
 │  ✅ Diagrams updated per professor feedback - Jan 24, 2026                  │
 │  ✅ EC2 Training AMI created (ami-03a3037588b0f34f2) - Feb 20, 2026        │
@@ -29,7 +30,7 @@
 **Start Here:**
 - **IMMEDIATE:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) ► **PRODUCTION MODEL PATH**
 - **Architecture:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
-- **Reference:** [Cloud Run 001 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) ⚠️ 80% success (n=2 only)
+- **Reference:** [Cloud Run 002 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_002_RESULTS.md) ► 40 episodes with per-n metrics
 - **Professor Response:** [Professor Comments Response](../10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md)
 
 ---
@@ -103,7 +104,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 
 ---
 
-## 20_KNOWLEDGE_BASE (13 files)
+## 20_KNOWLEDGE_BASE (15 files)
 
 How-to guides, troubleshooting, workflows, and reusable reference notes.
 
@@ -111,6 +112,7 @@ NOTE: SUMO FILES HAVE BEEN MOVED TO A SEPARATE FOLDER.
 
 | Document | Display Name |
 |----------|--------------|
+| [CLOUD_TRAINING_RUN_002_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_002_RESULTS.md) | **Cloud Training Run 002 Results** ► 40-episode eval + per-n evidence (Feb 21, 2026) |
 | [CLOUD_TRAINING_RUN_001_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) | **Cloud Training Run 001 Results** ► 80% SUCCESS (Jan 16, 2026) |
 | [AI_AGENT_CHECKLIST.md](../20_KNOWLEDGE_BASE/AI_AGENT_CHECKLIST.md) | AI Agent Pre-Implementation Checklist |
 | [DATALOGGER_MODIFICATION_PROMPT.md](../20_KNOWLEDGE_BASE/DATALOGGER_MODIFICATION_PROMPT.md) | DataLogger Modification Prompt |
@@ -192,6 +194,7 @@ Implemented/completed plans, approved code reviews, and historical documents.
 3. **ESP-NOW LR Mode** - [Migration Plan](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (parallel/after Run 002)
 
 ### RECENTLY COMPLETED
+- ✅ **Run 002 Evaluation Gap Fix + 40-Episode Validation** - [Review Plan](../10_PLANS_ACTIVE/RUN_002_EVAL_GAP_REVIEW.md) implemented (Feb 21, 2026)
 - ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)
 - ✅ **Phase 2: Deep Sets Policy Network** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_REVIEW.md) APPROVED (Jan 15, 2026)
 - ✅ **Phase 1: ConvoyEnv Dict Space** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_REVIEW.md) APPROVED (Jan 15, 2026)
