@@ -144,10 +144,37 @@ hdop,satellites,lost
 4. Duration: 5-10 minutes
 5. Speed: 10-30 km/h
 
-**Exit Criteria:**
+**Recording #1 (Feb 21, 2026) — COMPLETED, PARTIAL SUCCESS:**
+- [x] 6 files captured (V001_tx/rx, V002_tx/rx, V003_tx/rx)
+- [x] 100% GPS fix on all vehicles
+- [x] 3 braking events detected (2 light, 1 hard)
+- [x] ~200s overlap, ~42s stationary tail
+- **V002 was ego (not V001)**
+- **Issues found:**
+  - V001↔V002 link had ~85% packet loss (board placed near car door handle — metal body shielded signal)
+  - "Hard" braking was only -1.44 m/s² (too gentle — real emergency braking is -5 to -8 m/s²)
+  - Stationary tail was ~42s not 60s
+- **Usable for:** emulator calibration (sensor noise + healthy link network params), trajectory extraction, formation analysis
+- **NOT usable for:** model validation (ego was blind to lead car), hazard event characterization (braking too mild)
+- **Analysis script:** `ml/scripts/analyze_convoy_recording.py`
+- **Calibration script:** `ml/scripts/calibrate_emulator_convoy.py`
+- **Emulator params updated:** `emulator_params_measured.json` now uses convoy-calibrated values (cruising noise + healthy link network stats). Old RTT params backed up to `emulator_params_measured_rtt_backup.json`.
+
+**Recording #2 (PLANNED — next session):**
+- [ ] Board placement: roof-mounted (tape) for clear line-of-sight
+  - Lead car: board on roof
+  - Middle car: board on roof
+  - Ego car: board on roof
+- [ ] Hard braking: lead driver will stomp brake on signal (-5 m/s² or harder)
+- [ ] Tighter formation: maintain 10-15m spacing
+- [ ] Same protocol: cruise → light brake → cruise → light brake → hard brake → 60s stationary
+- [ ] Verify all 6 links have >80% PDR before accepting recording
+
+**Exit Criteria (Recording #2):**
 - [ ] 6 files total (2 per vehicle: TX + RX)
 - [ ] GPS fix on all vehicles throughout
-- [ ] At least one hard braking event captured
+- [ ] ALL 6 links have >80% PDR (no shielding issues)
+- [ ] Hard braking event with min_accel < -3.0 m/s²
 - [ ] Trajectories show realistic convoy behavior
 
 ### 6.2.3 Process Convoy Recording
@@ -373,3 +400,4 @@ python ml/scripts/train.py \
 ## Document History
 
 - **Jan 24, 2026:** Created based on planning session analysis
+- **Feb 24, 2026:** Updated Phase 6.2 with Recording #1 results and Recording #2 plan. Emulator calibrated from convoy data (healthy links + cruising noise). Next: roof-mount recording with harder braking.
