@@ -1,7 +1,7 @@
 # MESH + ACTION Architecture Correction Progress
 
 **Started:** February 26, 2026  
-**Last Updated:** February 26, 2026  
+**Last Updated:** February 27, 2026  
 **Owner:** Amir + Codex
 
 ---
@@ -15,7 +15,7 @@
 | Phase C — Mesh Relay in Emulator | ✅ Completed | Implemented with strict TDD (Red-Green) |
 | Phase D — Mesh in ConvoyEnv | ✅ Completed | Integrated simulate_mesh_step with full integration validation |
 | Phase E — Firmware Mesh Relay | ✅ Completed | Implemented with TDD; 18 tests passing |
-| Phase F — Recording Strategy Update | ⏳ Not Started | Pending docs/protocol update |
+| Phase F — Recording Strategy Update | ✅ Completed | Mesh-aware ego-only protocol documented + validator updated + analyzer supports ego-only mode |
 
 ---
 
@@ -229,9 +229,38 @@
 
 ---
 
+## Phase F Completion Record (Recording Strategy + Field Validation)
+
+### Scope Implemented
+
+- Updated recording protocol docs to make **ego-only logging** the default mesh workflow:
+  - `docs/20_KNOWLEDGE_BASE/DATA_RECORDING_STRATEGY.md`
+- Rewrote field validator prompt for on-site GO/NO-GO decisions in mesh-aware workflow:
+  - `docs/AGENTS/CONVOY_FIELD_VALIDATOR.md`
+- Updated analyzer to support both:
+  - **ego-only mode** (`V001_tx` + `V001_rx`)
+  - **legacy full mode** (6-file V001/V002/V003 tx+rx)
+  - file: `roadsense-v2v/ml/scripts/analyze_convoy_recording.py`
+
+### Validation Evidence
+
+1. **Ego-only mode run succeeded** on home mesh test directory:
+   - input: `at_home_mesh_relay_test/`
+   - result: `Mode: ego_only`, outputs generated successfully
+
+2. **Full mode regression run succeeded** on legacy recording:
+   - input: `Convoy_recording_02212026/`
+   - result: `Mode: full`, outputs generated successfully
+
+### Outcome
+
+- Phase F objective is now met:
+  - recording protocol is aligned with mesh architecture
+  - on-site validation procedure is documented
+  - tooling no longer assumes outdated 6-file-only workflow
+
+---
+
 ## Next Execution Step
 
-- Start Phase F:
-  - Update recording protocol documentation for mesh-aware firmware.
-  - Only record from ego vehicle — mesh delivers everything through relays.
-  - Document augmentation strategy (virtual vehicle behind ego).
+- Execute Convoy Recording #2 (mesh-aware, ego-only logging) and run on-site validation using updated `CONVOY_FIELD_VALIDATOR.md`.

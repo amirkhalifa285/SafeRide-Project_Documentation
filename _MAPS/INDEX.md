@@ -64,6 +64,8 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 
 | Document | Display Name |
 |----------|--------------|
+| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md) | **Mesh + Continuous Action Correction** ► PHASES A-E COMPLETE, Phase F pending |
+| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md) | Mesh + Action Correction Progress Tracker |
 | [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► IMMEDIATE PRIORITY (Jan 24) |
 | [AGENT_HANDOFF_FIELD_READINESS_PLAN.md](../10_PLANS_ACTIVE/AGENT_HANDOFF_FIELD_READINESS_PLAN.md) | **Field Readiness Handoff Plan** ► ACTIVE (Feb 12 implementation pass) |
 | [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | n-Element Deep Sets Implementation (Phases 1-5) |

@@ -257,9 +257,36 @@ From a 3-vehicle recording (A, B, C where C=ego):
 - Include hard braking maneuvers for hazard scenarios
 - Verify mesh relay is working: check for hop=1 messages in V001's RX log
 
+### On-Site Post-Drive Validation (Updated)
+
+Use `analyze_convoy_recording.py` immediately after recording, before leaving the site:
+
+```bash
+cd /home/amirkhalifa/RoadSense2/roadsense-v2v/ml
+source venv/bin/activate
+python scripts/analyze_convoy_recording.py \
+  --input-root <RECORDING_DIR> \
+  --out-dir /home/amirkhalifa/RoadSense2/roadsense-v2v/ml/data/convoy_analysis_site \
+  --no-plots
+```
+
+Notes:
+- Script now auto-detects input mode:
+  - `ego_only`: only `V001_tx_*.csv` + `V001_rx_*.csv` (current workflow)
+  - `full`: legacy 6-file layout (`V001/V002/V003` each with tx/rx)
+- In ego-only mode, link metrics in `analysis_summary.json -> pdr_by_link` are estimated from V001 RX message spacing (sufficient for on-site GO/NO-GO).
+
+Minimum on-site acceptance checks:
+- `data_quality_summary.json -> files`: V001 TX and RX both have `rows_valid >= 500`, low malformed rows, and no logging instability.
+- V001 TX shows good GPS (`gps_fix_pct >= 95%`).
+- `analysis_summary.json -> pdr_by_link`: both peer links to V001 are healthy (`pdr >= 0.80`).
+- `V001_rx_*.csv` includes `hop_count` column and has some rows with `hop_count >= 1`.
+- `convoy_events.json -> detected.hard_event.min_accel_x_ms2 < -2.0` (target `< -3.0`).
+
 ---
 
 ## Document History
 
 - **Jan 24, 2026:** Created based on planning session analysis
 - **Feb 27, 2026:** Added mesh-aware recording section (Phase E firmware complete)
+- **Feb 27, 2026:** Added on-site post-drive validation flow for analyzer auto-mode (`ego_only` + `full`)
