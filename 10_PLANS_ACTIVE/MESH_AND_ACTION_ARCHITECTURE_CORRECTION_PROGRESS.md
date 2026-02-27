@@ -14,7 +14,7 @@
 | Phase B — Continuous Action Space | ✅ Completed | Implemented with strict TDD (Red-Green) |
 | Phase C — Mesh Relay in Emulator | ✅ Completed | Implemented with strict TDD (Red-Green) |
 | Phase D — Mesh in ConvoyEnv | ✅ Completed | Integrated simulate_mesh_step with full integration validation |
-| Phase E — Firmware Mesh Relay | ⏳ Not Started | Pending |
+| Phase E — Firmware Mesh Relay | ✅ Completed | Implemented with TDD; 18 tests passing |
 | Phase F — Recording Strategy Update | ⏳ Not Started | Pending docs/protocol update |
 
 ---
@@ -184,9 +184,54 @@
 
 ---
 
+## Phase E Completion Record (Firmware Mesh Relay)
+
+### Scope Implemented
+
+- **ConeFilter (C++):** `hardware/src/inference/ConeFilter.h/.cpp`
+  - `isInCone()` with GPS lat/lon projection (`cos(avgLat)` for longitude compression)
+  - `normalizeAngleDeg()` handles 360/0 wraparound (including C++ negative `fmod` edge case)
+  - Convention: 0°=North, clockwise positive (matches GPS/SUMO)
+- **MeshRelayPolicy:** `hardware/src/network/mesh/MeshRelayPolicy.h/.cpp`
+  - `shouldRelayMessage()` — gates on: not-self, in-front-cone, below-max-hop
+  - `computeRelayedHopCount()` — increments with saturation at max
+  - `parseAndStoreReceivedMessage<T>()` — generic template, validates size, calls addPackage
+- **PackageManager integration in main.cpp:**
+  - `relayPendingFrontConePackages()` — processes all pending packages via callback, applies cone filter + relay policy, increments hop count, sends via ESP-NOW
+  - `onDataReceived()` — parses incoming messages, stores in PackageManager with mutex protection
+  - Relay fires at 10Hz after own broadcast; cleanup at 1Hz
+  - sourceMAC preserved on relay (not overwritten with relayer's MAC)
+- **V2VMessage:** Mesh metadata fields (`hopCount`, `sourceMAC[6]`) already present; 90 bytes total
+
+### TDD Evidence
+
+1. **Original tests (8):** Cone filter basics, relay policy branches, parse/store, invalid payload rejection.
+2. **Gap-filling tests (10, added Feb 27):**
+   - Hop count saturation at max (including above-max defensive case)
+   - Cone filter at Israel latitude (~32°N) — verified cos(lat) projection narrows east-west bearing
+   - Real V2VMessage wire parsing (90-byte round-trip: build → serialize → parse → verify all fields)
+   - V2VMessage wrong size (89 bytes) rejected
+   - E2E relay chain A→B→C: cone check, relay decision, hop 0→1→2, sourceMAC preserved
+   - Relay blocked when source behind ego
+   - Relay blocked at max hop count
+   - Self-message not relayed (MACHelper comparison)
+   - normalizeAngleDeg at 180° boundary
+   - normalizeAngleDeg wrap-around (heading 1°, bearing 359°)
+3. **Verification:**
+   - `pio test -e esp32dev -f test_phase_e_mesh_relay`
+   - Result: **18 passed**
+
+### Key Design Decisions
+
+- Relay latency: up to 100ms per hop (10Hz relay cycle). With MAX_HOP_COUNT=3, worst case ~300ms, within 500ms timeout.
+- RX messages dropped if PackageManager mutex is held (2ms timeout). Acceptable: messages repeat at 10Hz.
+- C++ cone filter uses `cos(lat)` projection for longitude; Python uses flat SUMO coordinates. Both correct for their coordinate systems.
+
+---
+
 ## Next Execution Step
 
-- Start Phase E:
-  - Implement rebroadcast logic in Firmware `main.cpp` using `PackageManager`.
-  - Ensure vehicle rebroadcasts own data AND received data from vehicles in its front cone.
-  - Implement dedup logic on hardware to avoid broadcast storms.
+- Start Phase F:
+  - Update recording protocol documentation for mesh-aware firmware.
+  - Only record from ego vehicle — mesh delivers everything through relays.
+  - Document augmentation strategy (virtual vehicle behind ego).

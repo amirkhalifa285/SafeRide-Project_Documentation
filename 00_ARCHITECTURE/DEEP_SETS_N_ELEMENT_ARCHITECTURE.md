@@ -67,7 +67,11 @@ At each timestep, the agent observes:
 - **Peer set**: `E = {e_1, e_2, ..., e_n}` where each `e_i = [rel_x, rel_y, speed, accel, heading, age_ms]` (6 dims per peer)
 
 **Cone Filter (Front FOV):**
-Inside **AI inference (V001 only)**, filter peers by relative bearing to keep only vehicles within a forward-facing cone. Dumb broadcasters (V002/V003/...) do **not** filter; they only transmit. The same cone filter is applied in simulation to match training/inference distributions.
+> **UPDATE (Feb 26, 2026):** Cone filtering now has TWO roles:
+> 1. **Relay filtering (ALL vehicles):** Each vehicle applies the cone filter to decide which received messages to **rebroadcast**. Only messages from vehicles in the front cone are relayed. This happens on all vehicles, not just ego.
+> 2. **Observation filtering (ego only):** The ego vehicle's observation builder applies the same cone filter to exclude peers outside the forward cone from the RL observation.
+>
+> The cone filter uses GPS-based bearing (0=North, clockwise) with a default half-angle of 45 (90 total). Implementation: `ConeFilter.cpp` (firmware), `observation_builder.py` + `espnow_emulator.py` (simulation).
 
 Key properties:
 - Elements in E are **unordered** (no natural "peer 1" vs "peer 2")

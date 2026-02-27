@@ -22,8 +22,23 @@
 > **What Remains Valid:**
 > - ESP-NOW Characterization approach
 > - Domain Randomization strategy
-> - Reward function design
+> - ~~Reward function design~~ (updated for continuous actions)
 > - Sim2Real pipeline concept
+
+> ## SUPERSEDED NOTICE #2 (February 26, 2026 — Professor Correction)
+>
+> **The action space and network model in this document are WRONG.**
+>
+> **Action Space:** `Discrete(4)` (MAINTAIN/CAUTION/BRAKE/EMERGENCY) is replaced by **`Box(low=0.0, high=1.0, shape=(1,))`** — a continuous deceleration fraction. The model learns the percentage of max deceleration to apply. See `MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md`.
+>
+> **Network Model:** "Direct broadcast" is replaced by **mesh relay**. Each vehicle broadcasts its own data AND rebroadcasts data from vehicles in its front cone (cone filter). The deployment diagram below showing V002/V003 as "broadcast only" is outdated — they now participate in mesh relay.
+>
+> **What is now INVALID in this document:**
+> - Action Space: `Discrete(4)` diagrams and reward tables referencing discrete actions
+> - Deployment diagram: No mesh relay shown
+> - Reward function: Discrete-action-based penalties (replaced by continuous decel scaling)
+>
+> **See:** `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` for full details.
 
 ---
 

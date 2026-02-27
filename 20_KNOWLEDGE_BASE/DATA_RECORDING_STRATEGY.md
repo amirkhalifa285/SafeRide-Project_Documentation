@@ -209,6 +209,57 @@ Decision pending: Simplicity vs richer observation for Run 002.
 
 ---
 
+---
+
+## Mesh-Aware Recording (Feb 26, 2026 Update)
+
+### What Changed
+
+With mesh relay implemented in firmware (Phase E complete, Feb 27 2026), the recording strategy is simplified:
+
+**Old approach:** Record TX/RX on all three vehicles, align clocks post-hoc.
+**New approach:** Only record from the ego vehicle. Through mesh relay, ego's RX log captures data from ALL reachable vehicles (direct + relayed).
+
+### How Mesh Changes Recording
+
+```
+Convoy: A (front) → B (middle) → C (ego, rear)
+
+A broadcasts its own state (hop=0)
+B receives A → cone filter: A is ahead → rebroadcast A (hop=1) + broadcast B's own (hop=0)
+C (ego) receives: A via B (hop=1) + B direct (hop=0)
+
+C's RX log contains EVERYTHING.
+```
+
+### Recording Protocol (Mesh-Aware)
+
+1. **Only ego (V001) needs to log.** Its RX file captures:
+   - Direct messages from immediate neighbors (hop=0)
+   - Relayed messages from further vehicles (hop >= 1)
+   - Each message includes `sourceMAC` (original sender) and `hopCount`
+2. **Other vehicles (V002, V003) only need firmware running.** No SD card required on non-ego.
+3. **Deduplication is handled by PackageManager.** If the same message arrives via multiple paths, only the first copy is stored.
+
+### Data Augmentation Strategy
+
+From a 3-vehicle recording (A, B, C where C=ego):
+1. C's RX data contains: B's state (direct) + A's state (relayed via B)
+2. To augment: add a virtual vehicle D behind C
+3. D's input = C's relayed data (C's own state + what C relayed from A and B)
+4. This creates a 4-vehicle scenario from a 3-vehicle recording
+
+### Implications for Phase 6 (Recording #2)
+
+- Mount boards on roof (better ESP-NOW range, confirmed by Recording #1 analysis)
+- Only V001 needs SD card + logging firmware
+- V002/V003 run standard mesh-relay firmware (Phase E)
+- Include hard braking maneuvers for hazard scenarios
+- Verify mesh relay is working: check for hop=1 messages in V001's RX log
+
+---
+
 ## Document History
 
 - **Jan 24, 2026:** Created based on planning session analysis
+- **Feb 27, 2026:** Added mesh-aware recording section (Phase E firmware complete)

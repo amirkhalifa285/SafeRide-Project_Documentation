@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 **Context**: Guidance for Claude Code (claude.ai/code) working on the RoadSense V2V project.
-**Last Updated:** January 1, 2026
+**Last Updated:** February 27, 2026
 
 ---
 
@@ -63,13 +63,30 @@
 - **Simulation Engine:** **SUMO 1.25.0+** (Dockerized)
   - *Deprecated:* Veins & OMNeT++ are **REMOVED** from scope.
 - **Sim2Real Bridge:** **ESP-NOW Emulator** (Python)
-  - Emulates packet loss, latency, and jitter based on *measured hardware data*.
-  - see `00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md`.
+  - Emulates packet loss, latency, jitter, and **multi-hop mesh relay** based on *measured hardware data*.
+  - Mesh simulation via `simulate_mesh_step()` (replaces legacy per-peer `transmit()`).
+  - See `00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md`.
 - **Machine Learning:**
-  - **Approach:** Reinforcement Learning (PPO/DQN).
+  - **Approach:** Reinforcement Learning (**PPO**) with **Deep Sets** architecture.
+  - **Architecture:** Permutation-invariant set encoder solves the n-element problem.
+  - **Action Space:** **Continuous `Box(1,)`** — model outputs deceleration fraction [0.0, 1.0].
+  - **Observation:** Dict space with ego state (4-dim) + variable peer set (up to 8, 6-dim each).
   - **Agent:** Runs on **V001 (Ego Vehicle)** only.
-  - **Input:** Received V2V messages from neighbors + Ego Speed.
+  - **Input:** V2V messages from mesh network (direct + relayed) + Ego state.
   - **Deployment:** TensorFlow Lite for Microcontrollers (Quantized INT8).
+  - See `00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md`.
+
+### 3. Mesh Networking (Feb 26, 2026 — Professor Correction)
+- **Protocol:** Each vehicle broadcasts its own state AND rebroadcasts data from vehicles in its **front cone**.
+- **Cone Filter:** GPS-based bearing check (45 half-angle). Determines what gets relayed.
+- **Relay Chain:** A (front) broadcasts → B (middle) receives + relays A's data → C (ego) receives both A (hop=1) and B (hop=0).
+- **Deduplication:** By `sourceMAC + timestamp`. PackageManager handles this.
+- **Max Hops:** 3 (`MAX_HOP_COUNT` in config.h).
+- **Implementation Status:**
+  - Firmware (`main.cpp`): ✅ Relay logic + ConeFilter + MeshRelayPolicy (18 tests passing)
+  - Emulator (`espnow_emulator.py`): ✅ `simulate_mesh_step()` with multi-hop + cone filter
+  - ConvoyEnv (`convoy_env.py`): ✅ Uses mesh simulation instead of per-peer transmit
+  - See `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md`.
 
 ---
 
@@ -77,10 +94,15 @@
 
 ### The "Single-Agent" Architecture
 **Protocol:**
-1.  **V001 (Ego)** is the intelligent agent.
-2.  **V002 & V003** are "dumb" broadcasters (Lead Vehicles).
-3.  **Logging:** Only V001 logs data. It logs what it *sees* (the V2V packets from others).
-4.  **Inference:** V001 calculates collision risk for *itself*.
+1.  **V001 (Ego)** is the intelligent agent (runs inference).
+2.  **V002, V003, ... VN** are broadcasters AND mesh relayers. They broadcast their own state and rebroadcast data from vehicles in their front cone.
+3.  **Logging:** Only V001 logs data. Through mesh relay, V001's RX log captures data from all reachable vehicles (direct + relayed).
+4.  **Inference:** V001 runs the RL model and calculates its own deceleration fraction.
+
+### Action Space (CRITICAL — Feb 26, 2026 Correction)
+- **Continuous `Box(low=0.0, high=1.0, shape=(1,))`** — NOT Discrete(4).
+- Output: fraction of maximum deceleration. `actual_decel = action * MAX_DECEL` where `MAX_DECEL = 5.0 m/s²`.
+- PPO handles continuous actions natively. The model learns the percentage of braking needed.
 
 ### Documentation Authority
 - **Architecture:** `docs/00_ARCHITECTURE/` is the Source of Truth.

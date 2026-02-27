@@ -1,6 +1,6 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** February 26, 2026
+**Last Updated:** February 27, 2026
 **Total Documents:** 67
 
 ---
@@ -9,20 +9,28 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│  ARCHITECTURE CORRECTIONS (Feb 26-27, 2026 — Professor Meeting)             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ✅ Phase A: Cone Filter (Python observation pipeline)                       │
+│  ✅ Phase B: Continuous Action Space (Box(1,) replaces Discrete(4))          │
+│  ✅ Phase C: Mesh Relay in Emulator (multi-hop simulation)                   │
+│  ✅ Phase D: Mesh in ConvoyEnv (simulate_mesh_step integration)              │
+│  ✅ Phase E: Firmware Mesh Relay (ConeFilter + MeshRelayPolicy, 18 tests)    │
+│  ⏳ Phase F: Recording Strategy Update (docs only) ◄── NEXT                 │
+│  ► Run 003: Retrain with mesh + continuous actions + cone filter             │
+│                                                                              │
+│  See: MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md                             │
+│  Run 002 is BASELINE ONLY — trained without mesh/cone/continuous actions.    │
+├─────────────────────────────────────────────────────────────────────────────┤
 │  PHASE 6: Real Data Pipeline - Production Model Path                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ✅ Phases 1-4: ML Architecture COMPLETE (Deep Sets, ConvoyEnv, Emulator)   │
-│  ✅ Cloud Run 001: 80% success BUT n=2 only - Jan 16, 2026                  │
 │  ✅ Cloud Run 002: 100% success (40ep) BUT only n=1,2 - Feb 21, 2026       │
-│  ✅ RTT characterization complete (measured params regenerated)              │
-│  ✅ EC2 Training AMI created (ami-03a3037588b0f34f2) - Feb 20, 2026        │
-│  ✅ Convoy Recording #1 complete (partial) - Feb 21, 2026                   │
 │  ✅ Emulator calibrated from convoy data (cruising noise) - Feb 24, 2026    │
 │                                                                              │
-│  ✅ Phase 6.1: Enhanced RTT capture + processing complete                    │
-│  ⏳ Phase 6.2: Recording #2 (roof mount + hard brake) ◄── NEXT              │
+│  ⏳ Phase 6.2: Recording #2 (roof mount, mesh-aware firmware, hard brake)   │
 │  ► Phase 6.3: Process convoy → SUMO base scenario                           │
-│  ► Phase 6.6: Train final model (convoy-calibrated params)                  │
+│  ► Phase 6.6: Train Run 003 (mesh + continuous + cone filter)               │
 │  ► Phase 6.7: 200-episode eval (n=1-5, hazards ON)                         │
 │  ► Phase 7:   Quantization (TFLite INT8 for ESP32)                          │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -199,15 +207,16 @@ Implemented/completed plans, approved code reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES (In Order)
-1. **Convoy Recording #2** - roof-mount boards, hard braking, verify all links >80% PDR
-2. **Process convoy → SUMO base + Train final model** - convoy-calibrated emulator params ready
-3. **200-episode eval (n=1-5, hazards ON)** - prove Deep Sets handles variable n
-4. **Quantization** - TFLite INT8 for ESP32 deployment (target: mid-June demo)
+1. **Phase F: Recording Strategy docs** - document mesh-aware recording protocol
+2. **Convoy Recording #2** - roof-mount boards, mesh-relay firmware, hard braking
+3. **Run 003: Retrain** - mesh + continuous actions + cone filter (first correct training)
+4. **200-episode eval (n=1-5, hazards ON)** - prove Deep Sets handles variable n
+5. **Quantization** - TFLite INT8 for ESP32 deployment
 
 ### RECENTLY COMPLETED
-- ✅ **Convoy Recording #1 + Emulator Calibration** - Feb 21-24, 2026. Partial success (link issue found). Emulator calibrated from healthy links + cruising sensor noise.
-- ✅ **Convoy Data Interpreter Agent** - [Agent Prompt](../AGENTS/CONVOY_DATA_INTERPRETER.md) created (Feb 24, 2026)
-- ✅ **Run 002 Evaluation Gap Fix + 40-Episode Validation** - [Review Plan](../10_PLANS_ACTIVE/RUN_002_EVAL_GAP_REVIEW.md) implemented (Feb 21, 2026)
+- ✅ **Architecture Correction Phases A-E** - Feb 26-27, 2026. Cone filter, continuous action space, mesh relay in emulator/ConvoyEnv/firmware. [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
+- ✅ **Convoy Recording #1 + Emulator Calibration** - Feb 21-24, 2026. Emulator calibrated from healthy links + cruising sensor noise.
+- ✅ **Run 002 Evaluation** - Feb 21, 2026. 100% success (40ep) BUT baseline only (no mesh/cone/continuous).
 - ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)
 
 ### ESP-NOW Emulator
