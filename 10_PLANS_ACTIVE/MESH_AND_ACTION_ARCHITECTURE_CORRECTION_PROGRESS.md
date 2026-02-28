@@ -1,7 +1,7 @@
 # MESH + ACTION Architecture Correction Progress
 
-**Started:** February 26, 2026  
-**Last Updated:** February 27, 2026  
+**Started:** February 26, 2026
+**Last Updated:** February 28, 2026
 **Owner:** Amir + Codex
 
 ---
@@ -16,6 +16,7 @@
 | Phase D — Mesh in ConvoyEnv | ✅ Completed | Integrated simulate_mesh_step with full integration validation |
 | Phase E — Firmware Mesh Relay | ✅ Completed | Implemented with TDD; 18 tests passing |
 | Phase F — Recording Strategy Update | ✅ Completed | Mesh-aware ego-only protocol documented + validator updated + analyzer supports ego-only mode |
+| Phase G — Real Data Collection | ✅ Completed | Recording #2 + extra driving data captured; mesh relay validated in the field |
 
 ---
 
@@ -261,6 +262,46 @@
 
 ---
 
+## Phase G Completion Record (Real Data Collection)
+
+### Recording #2 — Convoy Hazard Protocol (Feb 28, 2026)
+
+- **Mode:** ego-only mesh logging (V001 TX + RX)
+- **Duration:** 195.5s
+- **Data:** `Convoy_recording_02282026/V001_tx_004.csv` + `V001_rx_004.csv`
+- **Hard braking:** -8.63 m/s² raw / -4.11 m/s² smoothed (on accel_Y axis)
+- **Mesh validation:** 953/3768 RX packets with hop>=1, max hop=2 (confirms A→B→C relay)
+- **Links:** V002→V001 PDR 0.852, V003→V001 PDR 0.752 (relay compensates)
+- **GPS:** 100% fix, stationary tail 301.9s
+
+### Extra Regular Driving (Feb 28, 2026)
+
+- **Duration:** 581.6s (~10 min)
+- **Data:** `Convoy_extra_data_02282026/V001_tx_005.csv` + `V001_rx_005.csv`
+- **Links:** V002→V001 PDR 0.881, V003→V001 PDR 0.774
+- **Formation:** moderate (21.2m avg spacing — wider than main, adds distance diversity)
+- **Natural braking:** peak -4.58 m/s² smoothed from regular driving
+
+### Critical Discovery: Axis Mapping
+
+The board is mounted with **Y-axis forward** (braking direction). The analyzer was checking `accel_x` and initially reported a false NO-GO. Added `--forward-axis y` flag to `analyze_convoy_recording.py` which swaps accel_x ↔ accel_y at load time so all downstream analysis uses the correct forward axis.
+
+### Combined Dataset
+
+| | Main (004) | Extra (005) | Total |
+|---|---|---|---|
+| Duration | 195.5s | 581.6s | **777s (~13 min)** |
+| TX rows | 4,984 | 14,899 | **19,883** |
+| RX rows | 3,768 | 12,092 | **15,860** |
+
+### Verdict
+
+**GO** — All recordings accepted. Data collection phase is complete.
+
+---
+
 ## Next Execution Step
 
-- Execute Convoy Recording #2 (mesh-aware, ego-only logging) and run on-site validation using updated `CONVOY_FIELD_VALIDATOR.md`.
+- Re-calibrate emulator params from Recording #2 data (both recordings, using correct axis).
+- Process convoy logs into `ml/scenarios/base_real/` for dataset generation.
+- Proceed with Phase 6.3 (Augmentation Pipeline) and training.

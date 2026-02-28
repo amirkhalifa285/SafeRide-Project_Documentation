@@ -1,6 +1,6 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** February 27, 2026
+**Last Updated:** February 28, 2026
 **Total Documents:** 67
 
 ---
@@ -9,17 +9,17 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  ARCHITECTURE CORRECTIONS (Feb 26-27, 2026 — Professor Meeting)             │
+│  ARCHITECTURE CORRECTIONS — ALL COMPLETE (Feb 26-28, 2026)                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ✅ Phase A: Cone Filter (Python observation pipeline)                       │
 │  ✅ Phase B: Continuous Action Space (Box(1,) replaces Discrete(4))          │
 │  ✅ Phase C: Mesh Relay in Emulator (multi-hop simulation)                   │
 │  ✅ Phase D: Mesh in ConvoyEnv (simulate_mesh_step integration)              │
 │  ✅ Phase E: Firmware Mesh Relay (ConeFilter + MeshRelayPolicy, 18 tests)    │
-│  ⏳ Phase F: Recording Strategy Update (docs only) ◄── NEXT                 │
-│  ► Run 003: Retrain with mesh + continuous actions + cone filter             │
+│  ✅ Phase F: Recording Strategy Update (mesh-aware ego-only protocol)        │
+│  ✅ Phase G: Real Data Collection (Recording #2 GO + extra driving)          │
 │                                                                              │
-│  See: MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md                             │
+│  See: MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md                    │
 │  Run 002 is BASELINE ONLY — trained without mesh/cone/continuous actions.    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  PHASE 6: Real Data Pipeline - Production Model Path                        │
@@ -27,12 +27,16 @@
 │  ✅ Phases 1-4: ML Architecture COMPLETE (Deep Sets, ConvoyEnv, Emulator)   │
 │  ✅ Cloud Run 002: 100% success (40ep) BUT only n=1,2 - Feb 21, 2026       │
 │  ✅ Emulator calibrated from convoy data (cruising noise) - Feb 24, 2026    │
+│  ✅ Phase 6.2: Recording #2 — GO (Feb 28, hard brake -8.63 m/s², mesh OK)  │
+│  ✅ Extra 10min regular driving captured (581.6s, adds diversity)            │
 │                                                                              │
-│  ⏳ Phase 6.2: Recording #2 (roof mount, mesh-aware firmware, hard brake)   │
-│  ► Phase 6.3: Process convoy → SUMO base scenario                           │
-│  ► Phase 6.6: Train Run 003 (mesh + continuous + cone filter)               │
-│  ► Phase 6.7: 200-episode eval (n=1-5, hazards ON)                         │
-│  ► Phase 7:   Quantization (TFLite INT8 for ESP32)                          │
+│  ► Phase 6.3: Re-calibrate emulator + process convoy → SUMO base           │
+│  ► Phase 6.4-6.5: Generate dataset_v3 + ML finalization                     │
+│  ► Phase 6.6: Train Run 003 (mesh + continuous + cone filter + real data)   │
+│  ► Eval: 200-episode eval (n=1-5, hazards ON)                               │
+│  ► Phase 7: Quantization (TFLite INT8 for ESP32)                            │
+│                                                                              │
+│  ⚠️ Board Y-axis is forward. Always use --forward-axis y with analyzer.     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,9 +68,9 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 
 | Document | Display Name |
 |----------|--------------|
-| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md) | **Mesh + Continuous Action Correction** ► PHASES A-E COMPLETE, Phase F pending |
-| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md) | Mesh + Action Correction Progress Tracker |
-| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► IMMEDIATE PRIORITY (Jan 24) |
+| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md) | Mesh + Continuous Action Correction ► ALL PHASES COMPLETE (A-G) |
+| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md) | Mesh + Action Correction Progress Tracker ► COMPLETE |
+| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► IMMEDIATE PRIORITY (Phase 6.3+ next) |
 | [AGENT_HANDOFF_FIELD_READINESS_PLAN.md](../10_PLANS_ACTIVE/AGENT_HANDOFF_FIELD_READINESS_PLAN.md) | **Field Readiness Handoff Plan** ► ACTIVE (Feb 12 implementation pass) |
 | [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | n-Element Deep Sets Implementation (Phases 1-5) |
 | [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) |
@@ -86,7 +90,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | Document | Display Name |
 |----------|--------------|
 | [CONVOY_DATA_INTERPRETER.md](../AGENTS/CONVOY_DATA_INTERPRETER.md) | **Convoy Data Interpreter Agent** (Feb 24, 2026) |
-| [CONVOY_FIELD_VALIDATOR.md](../AGENTS/CONVOY_FIELD_VALIDATOR.md) | **Convoy Field Validator Agent** ► NEW (Feb 26, 2026) |
+| [CONVOY_FIELD_VALIDATOR.md](../AGENTS/CONVOY_FIELD_VALIDATOR.md) | **Convoy Field Validator Agent** (Updated Feb 28: --forward-axis y) |
 | [BOOKKEEPER_PROMPT.md](../AGENT_PROMPTS/BOOKKEEPER_PROMPT.md) | Documentation Bookkeeper Agent |
 
 ### RTT Implementation (Subdirectory)
@@ -137,7 +141,8 @@ NOTE: SUMO FILES HAVE BEEN MOVED TO A SEPARATE FOLDER.
 | [AI_AGENT_CHECKLIST.md](../20_KNOWLEDGE_BASE/AI_AGENT_CHECKLIST.md) | AI Agent Pre-Implementation Checklist |
 | [DATALOGGER_MODIFICATION_PROMPT.md](../20_KNOWLEDGE_BASE/DATALOGGER_MODIFICATION_PROMPT.md) | DataLogger Modification Prompt |
 | [DATALOGGER_VALIDATION_TEST.md](../20_KNOWLEDGE_BASE/DATALOGGER_VALIDATION_TEST.md) | DataLogger Validation Test Guide (At Home) |
-| [HARDWARE_PROGRESS.md](../20_KNOWLEDGE_BASE/HARDWARE_PROGRESS.md) | Hardware Development Progress |
+| [DATA_RECORDING_STRATEGY.md](../20_KNOWLEDGE_BASE/DATA_RECORDING_STRATEGY.md) | **Recording Strategy + Axis Mapping** (Updated Feb 28: --forward-axis y critical) |
+| [HARDWARE_PROGRESS.md](../20_KNOWLEDGE_BASE/HARDWARE_PROGRESS.md) | Hardware Development Progress (Updated Feb 28: Recording #2 GO) |
 | [LINUX_PIP_LARGE_PACKAGES.md](../20_KNOWLEDGE_BASE/LINUX_PIP_LARGE_PACKAGES.md) | **Installing Large Python Packages (PyTorch) on Linux** |
 | [ML_AUGMENTATION_PIPELINE.md](../20_KNOWLEDGE_BASE/ML_AUGMENTATION_PIPELINE.md) | ML Data Augmentation Pipeline (SUMO-Only) |
 | [ML_DOCKER_ENVIRONMENT.md](../20_KNOWLEDGE_BASE/ML_DOCKER_ENVIRONMENT.md) | **ML Docker Environment Guide** (NEW - cross-platform setup) |
@@ -209,14 +214,16 @@ Implemented/completed plans, approved code reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES (In Order)
-1. **Phase F: Recording Strategy docs** - document mesh-aware recording protocol
-2. **Convoy Recording #2** - roof-mount boards, mesh-relay firmware, hard braking
-3. **Run 003: Retrain** - mesh + continuous actions + cone filter (first correct training)
-4. **200-episode eval (n=1-5, hazards ON)** - prove Deep Sets handles variable n
-5. **Quantization** - TFLite INT8 for ESP32 deployment
+1. **Re-calibrate emulator** - from Recording #2 data (both recordings, correct axis)
+2. **Process convoy → base_real/** - convert GPS trajectories to SUMO scenario
+3. **Generate dataset_v3** - real base + variable n augmentation
+4. **Run 003: Train** - mesh + continuous actions + cone filter + real data (first correct training)
+5. **200-episode eval (n=1-5, hazards ON)** - prove Deep Sets handles variable n
+6. **Quantization** - TFLite INT8 for ESP32 deployment
 
 ### RECENTLY COMPLETED
-- ✅ **Architecture Correction Phases A-E** - Feb 26-27, 2026. Cone filter, continuous action space, mesh relay in emulator/ConvoyEnv/firmware. [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
+- ✅ **Recording #2 + Extra Driving — GO** - Feb 28, 2026. Hard brake -8.63 m/s² (0.88g), mesh relay confirmed, ~13 min combined data. Axis mapping discovered (Y=forward). [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
+- ✅ **Architecture Correction Phases A-G** - Feb 26-28, 2026. Cone filter, continuous action space, mesh relay in emulator/ConvoyEnv/firmware, recording strategy, data collection. [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
 - ✅ **Convoy Recording #1 + Emulator Calibration** - Feb 21-24, 2026. Emulator calibrated from healthy links + cruising sensor noise.
 - ✅ **Run 002 Evaluation** - Feb 21, 2026. 100% success (40ep) BUT baseline only (no mesh/cone/continuous).
 - ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)
@@ -224,7 +231,9 @@ Implemented/completed plans, approved code reviews, and historical documents.
 ### ESP-NOW Emulator
 - [Design](../00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md)
 - [Progress](../90_ARCHIVE/Emulator/ESPNOW_EMULATOR_PROGRESS.md) ✅ COMPLETE (84/84 tests)
-- [Active Params](../../roadsense-v2v/ml/espnow_emulator/emulator_params_measured.json) (convoy-calibrated, Feb 24)
+- [Active Params](../../roadsense-v2v/ml/espnow_emulator/emulator_params_measured.json) (convoy-calibrated, Feb 24 — pending re-calibration from Recording #2)
+- [Recording #2 Extracted Params](../../roadsense-v2v/ml/data/convoy_analysis_site/convoy_emulator_params.json) (Feb 28)
+- [Extra Drive Extracted Params](../../roadsense-v2v/ml/data/convoy_analysis_extra/convoy_emulator_params.json) (Feb 28)
 - [Convoy Calibration Source](../../roadsense-v2v/ml/espnow_emulator/emulator_params_convoy.json)
 - [RTT Backup](../../roadsense-v2v/ml/espnow_emulator/emulator_params_measured_rtt_backup.json) (pre-convoy)
 - [Original 5m Test](../../roadsense-v2v/ml/espnow_emulator/emulator_params_5m.json)

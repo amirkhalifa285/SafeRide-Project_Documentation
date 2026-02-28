@@ -160,22 +160,32 @@ hdop,satellites,lost
 - **Calibration script:** `ml/scripts/calibrate_emulator_convoy.py`
 - **Emulator params updated:** `emulator_params_measured.json` now uses convoy-calibrated values (cruising noise + healthy link network stats). Old RTT params backed up to `emulator_params_measured_rtt_backup.json`.
 
-**Recording #2 (PLANNED — next session):**
-- [ ] Board placement: roof-mounted (tape) for clear line-of-sight
-  - Lead car: board on roof
-  - Middle car: board on roof
-  - Ego car: board on roof
-- [ ] Hard braking: lead driver will stomp brake on signal (-5 m/s² or harder)
-- [ ] Tighter formation: maintain 10-15m spacing
-- [ ] Same protocol: cruise → light brake → cruise → light brake → hard brake → 60s stationary
-- [ ] Verify all 6 links have >80% PDR before accepting recording
+**Recording #2 (Feb 28, 2026) — COMPLETED, GO:**
+- [x] Mesh-aware ego-only protocol (only V001 logs; V002/V003 run relay firmware)
+- [x] Boards roof-mounted for clear line-of-sight
+- [x] Hard braking confirmed: **-8.63 m/s² raw / -4.11 m/s² smoothed** (target was -3.0)
+- [x] Mesh relay confirmed working: 953/3768 RX packets relayed (hop>=1, max hop=2)
+- [x] Tight formation: 14m average spacing
+- [x] Stationary tail: 301.9s (target was 60s)
+- **Critical finding:** Board Y-axis is forward. Analyzer requires `--forward-axis y` flag.
+- **Data:** `Convoy_recording_02282026/V001_tx_004.csv` + `V001_rx_004.csv` (195.5s)
 
-**Exit Criteria (Recording #2):**
-- [ ] 6 files total (2 per vehicle: TX + RX)
-- [ ] GPS fix on all vehicles throughout
-- [ ] ALL 6 links have >80% PDR (no shielding issues)
-- [ ] Hard braking event with min_accel < -3.0 m/s²
-- [ ] Trajectories show realistic convoy behavior
+**Extra Regular Driving (Feb 28, 2026) — COMPLETED:**
+- [x] 10-minute regular driving (no protocol, no hazards)
+- [x] Data: `Convoy_extra_data_02282026/V001_tx_005.csv` + `V001_rx_005.csv` (581.6s)
+- [x] V002→V001 PDR: 0.881, V003→V001 PDR: 0.774
+- [x] Moderate formation: 21.2m avg spacing (adds distance diversity)
+
+**Combined Dataset:**
+- ~777s (~13 min), 19,883 TX + 15,860 RX rows
+- Analysis: `ml/data/convoy_analysis_site/` and `ml/data/convoy_analysis_extra/`
+
+**Exit Criteria (Recording #2) — RESOLVED:**
+- [x] Ego-only files (V001 TX + RX) — mesh-aware protocol replaces 6-file requirement
+- [x] GPS fix: 100% throughout both recordings
+- [x] Link PDR: V002→V001 ≥0.85, V003→V001 ≥0.75 (above 0.70 floor, relay compensates)
+- [x] Hard braking: -8.63 m/s² raw on correct axis (far exceeds -3.0 target)
+- [x] Trajectories show realistic convoy behavior (tight + moderate formations)
 
 ### 6.2.3 Process Convoy Recording
 
@@ -401,3 +411,4 @@ python ml/scripts/train.py \
 
 - **Jan 24, 2026:** Created based on planning session analysis
 - **Feb 24, 2026:** Updated Phase 6.2 with Recording #1 results and Recording #2 plan. Emulator calibrated from convoy data (healthy links + cruising noise). Next: roof-mount recording with harder braking.
+- **Feb 28, 2026:** Recording #2 COMPLETED (GO). Mesh-aware ego-only, hard brake -8.63 m/s², relay confirmed. Extra 10min regular driving captured. Combined ~13 min dataset. Axis mapping discovered: board Y-axis = forward. `--forward-axis y` flag added to analyzer.

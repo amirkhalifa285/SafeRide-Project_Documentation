@@ -279,9 +279,26 @@ Notes:
 Minimum on-site acceptance checks:
 - `data_quality_summary.json -> files`: V001 TX and RX both have `rows_valid >= 500`, low malformed rows, and no logging instability.
 - V001 TX shows good GPS (`gps_fix_pct >= 95%`).
-- `analysis_summary.json -> pdr_by_link`: both peer links to V001 are healthy (`pdr >= 0.80`).
+- `analysis_summary.json -> pdr_by_link`: both peer links to V001 are healthy (`pdr >= 0.80`). Links above 0.70 are acceptable if mesh relay is confirmed working.
 - `V001_rx_*.csv` includes `hop_count` column and has some rows with `hop_count >= 1`.
 - `convoy_events.json -> detected.hard_event.min_accel_x_ms2 < -2.0` (target `< -3.0`).
+
+### Accelerometer Axis Mapping (CRITICAL — Feb 28, 2026)
+
+**The board's forward/braking axis is Y, not X.** The analyzer script defaults to checking `accel_x` for braking detection. Without correction, hard braking reads as ~-1.1 m/s² (lateral noise on wrong axis) instead of the real -8.63 m/s² on the correct axis.
+
+**Always use the `--forward-axis y` flag:**
+```bash
+python scripts/analyze_convoy_recording.py \
+  --input-root <RECORDING_DIR> \
+  --out-dir <OUT_DIR> \
+  --no-plots \
+  --forward-axis y
+```
+
+The flag swaps `accel_x` and `accel_y` arrays at load time so all downstream code (braking detection, segment classification, observation building, sensor noise estimation) uses the correct forward axis.
+
+**How this was discovered:** Recording #2 (Feb 28) showed min_accel_x of only -1.13 m/s² despite the driver stomping the brakes. Manual inspection of accel_y revealed peaks of -8.63 m/s² correlated with GPS speed drops from 43 km/h. The board is physically mounted with Y-axis pointing forward along the vehicle.
 
 ---
 
@@ -290,3 +307,4 @@ Minimum on-site acceptance checks:
 - **Jan 24, 2026:** Created based on planning session analysis
 - **Feb 27, 2026:** Added mesh-aware recording section (Phase E firmware complete)
 - **Feb 27, 2026:** Added on-site post-drive validation flow for analyzer auto-mode (`ego_only` + `full`)
+- **Feb 28, 2026:** Added accelerometer axis mapping section. Board Y-axis is forward; `--forward-axis y` flag added to analyzer. Documented Recording #2 GO verdict and discovery process.

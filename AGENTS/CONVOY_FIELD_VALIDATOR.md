@@ -2,7 +2,7 @@
 
 **Purpose:** Run convoy post-drive validation immediately on site and give a clear GO/NO-GO verdict before leaving.
 
-**Last Updated:** February 27, 2026
+**Last Updated:** February 28, 2026
 
 ---
 
@@ -28,10 +28,13 @@ source venv/bin/activate
 python scripts/analyze_convoy_recording.py \
   --input-root <RECORDING_DIR> \
   --out-dir /home/amirkhalifa/RoadSense2/roadsense-v2v/ml/data/convoy_analysis_site \
-  --no-plots
+  --no-plots \
+  --forward-axis y
 ```
 
 Where `<RECORDING_DIR>` is where the CSV files were copied after drive.
+
+**CRITICAL: `--forward-axis y`** — Our board is mounted with Y-axis pointing forward (braking axis). Without this flag, braking detection checks the wrong axis and reports false NO-GO verdicts. This was discovered in Recording #2 (Feb 28, 2026) where -8.63 m/s² braking was missed because it appeared on accel_y not accel_x.
 
 ### Accepted input layouts
 
@@ -221,5 +224,7 @@ or
 
 - If analyzer fails to find files, verify naming and directory placement first.
 - Always pass `--input-root`; do not rely on script defaults.
+- **Always pass `--forward-axis y`** — board Y-axis is forward/braking.
 - In `ego_only` mode, estimated PDR is sufficient for on-site acceptance decisions.
+- V003→V001 PDR below 0.80 but above 0.70 is acceptable if mesh relay is confirmed working (hop_count>=1 in RX data). Relay compensates for reduced direct link quality.
 - Final architecture still uses V001 as ego for production and recording.

@@ -1,64 +1,66 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** February 26, 2026
+**Last Updated:** February 28, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Architecture Correction + Phase 6 Continuation
+## CURRENT PHASE: Phase 6.3+ — Augmentation, Re-calibration & Training
 
 ```
 ================================================================================
                          READ THIS FIRST - PROJECT STATUS
 ================================================================================
 
-⚠️⚠️⚠️  CRITICAL ARCHITECTURE CORRECTIONS — February 26, 2026  ⚠️⚠️⚠️
+  ARCHITECTURE CORRECTIONS — ALL COMPLETE (Feb 26-28, 2026)
 
-  PROFESSOR MEETING IDENTIFIED THREE FUNDAMENTAL ISSUES:
+  ✅ Phase A: Cone Filter (Python observation pipeline)
+  ✅ Phase B: Continuous Action Space (Box(1,) replaces Discrete(4))
+  ✅ Phase C: Mesh Relay in Emulator (multi-hop simulation)
+  ✅ Phase D: Mesh in ConvoyEnv (simulate_mesh_step integration)
+  ✅ Phase E: Firmware Mesh Relay (ConeFilter + MeshRelayPolicy, 18 tests)
+  ✅ Phase F: Recording Strategy Update (mesh-aware ego-only protocol)
+  ✅ Phase G: Real Data Collection (Recording #2 + extra driving, GO verdict)
 
-  1. MESH IS NOT IMPLEMENTED (labeled but never coded):
-     - Vehicles only broadcast own data, never relay peers
-     - Emulator is point-to-point, not multi-hop
-     - PackageManager exists but is dead code in main.cpp
-     - FIX: Each vehicle must rebroadcast front-cone peer data
+  REAL DATA COLLECTION — COMPLETE (Feb 28, 2026)
 
-  2. ACTION SPACE IS WRONG:
-     - Currently: Discrete(4) with hardcoded decel values
-     - Correct: Continuous Box(1,) — model learns % of deceleration
-     - The whole point of PPO is learning continuous control
+  Recording #2 (hazard protocol):
+    - 195.5s, V001 ego-only mesh logging
+    - Hard brake: -8.63 m/s² raw (0.88g) — far exceeds -3.0 target
+    - Mesh relay confirmed: 953 packets with hop>=1, max hop=2
+    - V002→V001 PDR: 0.852, V003→V001 PDR: 0.752 (relay compensates)
 
-  3. CONE FILTERING MISSING:
-     - Not just an observation filter — determines what gets RELAYED
-     - GPS-based: bearing from ego to peer vs ego heading
-     - Must exist in firmware AND simulation identically
+  Extra regular driving:
+    - 581.6s (~10 min), no protocol stops
+    - Adds distance diversity (21m avg spacing vs 14m in main)
 
-  SEE: docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md
-  ^^^ THIS IS THE MOST IMPORTANT DOCUMENT RIGHT NOW ^^^
+  Combined: ~777s (~13 min), 19,883 TX + 15,860 RX rows
 
-IMMEDIATE NEXT STEPS (REVISED):
-  1. Implement cone filter (Python + tests) — unblocks everything
-  2. Change action space to continuous Box(1,) + update tests
-  3. Implement mesh relay in ESP-NOW emulator + tests
-  4. Update ConvoyEnv to use mesh simulation + tests
-  5. Create eval scenarios for n=1,2,3,4,5 peers
-  6. Training Run 003: mesh + cone filter + continuous actions
-  7. Wire mesh relay into firmware (PackageManager + rebroadcast)
-  8. Convoy Recording #2 with mesh-aware firmware
+  ⚠️ CRITICAL: Board Y-axis is forward (braking axis, not X).
+     Always use --forward-axis y with analyze_convoy_recording.py
+
+IMMEDIATE NEXT STEPS:
+  1. Re-calibrate emulator params from Recording #2 (both recordings)
+  2. Process convoy logs into ml/scenarios/base_real/
+  3. Generate dataset_v3 with augmentation (variable n, real base)
+  4. Training Run 003: mesh + continuous actions + cone filter + real data
+  5. 200-episode eval (n=1-5, hazards ON)
+  6. Quantization (TFLite INT8 for ESP32)
 
 KEY DOCUMENTS:
-  - **CRITICAL:** 10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md
-  - Architecture: 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
-  - Phase 6: 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md
+  - **Phase 6 Pipeline:** 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md
+  - **Architecture:** 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
+  - **Arch Correction:** 10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md (COMPLETE)
 
 DO NOT:
   - Train without mesh relay in the emulator
   - Train without cone filtering
   - Train with Discrete(4) action space — must be continuous Box(1,)
   - Train on pure synthetic data (professor rejected this)
-  - Skip the real recording step
   - Use uncalibrated emulator params for production
   - Hardcode peer slots or use fixed observation space
+  - Run analyzer without --forward-axis y (board Y = forward)
 
 ================================================================================
 ```
@@ -68,35 +70,54 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED                       ARCHITECTURE FIX (NOW)          THEN: TRAINING
+COMPLETED (Phases 1-4 + Arch Fix + Data)        NOW: TRAINING PIPELINE
 ─────────────────────────────────────────────────────────────────────────────────
 
-[Phase 1-4: ML Architecture]    [ARCH CORRECTION - Feb 26]     [Run 003: Production]
-  ✅ ConvoyEnv Dict Obs            ► A. Cone Filter (Python)     ○ Generate dataset_v3
-  ✅ Deep Sets Policy              ► B. Continuous Actions        ○ n=1-5 eval scenarios
-  ✅ Emulator Causality Fix        ► C. Emulator Mesh Relay      ○ Train 10M steps
-  ✅ Training Pipeline             ► D. ConvoyEnv Mesh            ○ 200-ep evaluation
-  ✅ Run 001 (80%, n=2 only)       ► E. Firmware Mesh             ○ Quantize INT8
-  ✅ Run 002 (BASELINE ONLY)       ► F. Recording Strategy        ○ Deploy on ESP32
-  ✅ EC2 Training AMI
+[Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [Run 003: Production]
+  ✅ ConvoyEnv Dict Obs            ✅ A. Cone Filter (Python)     ► Re-calibrate emulator
+  ✅ Deep Sets Policy              ✅ B. Continuous Actions        ► Process convoy → base_real
+  ✅ Emulator Causality Fix        ✅ C. Emulator Mesh Relay      ► Generate dataset_v3
+  ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ► Train 10M steps
+  ✅ Run 001 (80%, n=2 only)       ✅ E. Firmware Mesh             ○ 200-ep evaluation
+  ✅ Run 002 (BASELINE ONLY)       ✅ F. Recording Strategy        ○ Quantize INT8
+  ✅ EC2 Training AMI              ✅ G. Real Data Collection      ○ Deploy on ESP32
   ✅ Convoy Recording #1
   ✅ Emulator calibrated
+  ✅ Recording #2 (GO) + Extra
 
-CURRENT FOCUS: Architecture Correction (Mesh + Continuous Actions + Cone Filter)
+CURRENT FOCUS: Phase 6.3+ (Emulator Re-calibration → Augmentation → Training)
 ─────────────────────────────────────────────────────────────────────────────────
-  ○ Phase A: Cone filter in observation_builder.py + tests
-  ○ Phase B: Continuous action space Box(1,) replacing Discrete(4) + tests
-  ○ Phase C: Multi-hop mesh relay in ESP-NOW emulator + tests
-  ○ Phase D: ConvoyEnv uses mesh simulation + tests
-  ○ Phase E: Firmware wires PackageManager + rebroadcast + tests
-  ○ Phase F: Recording strategy update (ego-only recording)
+  ► Re-calibrate emulator from Recording #2 data (correct axis)
+  ► Process convoy logs → SUMO base scenario (base_real/)
+  ► Generate dataset_v3 with real base + variable n augmentation
+  ► Training Run 003 (mesh + continuous + cone + real data)
+  ► 200-episode eval (n=1-5, hazard injection ON)
 
-  SEE: docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md
+  SEE: docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md
 ```
 
 ---
 
 ## Recent Achievements
+
+### Feb 28, 2026 - Convoy Recording #2 + Extra Data — GO VERDICT
+- **Recording #2 (hazard protocol):** 195.5s ego-only mesh recording. Hard braking -8.63 m/s² raw (0.88g). Mesh relay confirmed (953 relayed packets, max hop=2). V001 as ego.
+- **Extra regular driving:** 581.6s (~10 min) regular driving without protocol. Adds distance diversity (21m vs 14m spacing).
+- **Combined dataset:** ~777s, 19,883 TX + 15,860 RX rows.
+- **Critical discovery: Accelerometer axis mapping.** Board Y-axis is forward (braking direction), not X. Analyzer was checking wrong axis and initially reported false NO-GO. Added `--forward-axis y` flag to `analyze_convoy_recording.py`.
+- **Mesh relay validated in the field:** V003 data reaches V001 through V002 relay (hop=2). V003→V001 direct PDR is 0.752 but relay compensates.
+- **All architecture correction phases (A-G) now complete.** Data collection milestone achieved.
+- **Data locations:** `Convoy_recording_02282026/` (main), `Convoy_extra_data_02282026/` (extra).
+- **Analysis:** `ml/data/convoy_analysis_site/` and `ml/data/convoy_analysis_extra/`.
+
+### Feb 26-27, 2026 - Architecture Correction Phases A-F Complete
+- **All six phases implemented with TDD:**
+  - Phase A: Cone filter in Python observation pipeline (13 tests)
+  - Phase B: Continuous action space Box(1,) (36 tests)
+  - Phase C: Mesh relay in ESP-NOW emulator (9 tests)
+  - Phase D: Mesh in ConvoyEnv (34 tests)
+  - Phase E: Firmware mesh relay (18 tests)
+  - Phase F: Recording strategy updated (ego-only mesh protocol)
 
 ### Feb 26, 2026 - CRITICAL Architecture Correction (Professor Meeting)
 - **THREE fundamental issues identified:**
@@ -205,19 +226,22 @@ CURRENT FOCUS: Architecture Correction (Mesh + Continuous Actions + Cone Filter)
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `ml/espnow_emulator/emulator_params_5m.json` | **CURRENT** - Valid 5m stationary test data | Use for ConvoyEnv |
-| `ml/espnow_emulator/emulator_params.json` | Copy of 5m params (or link) | Active |
-| `ml/espnow_emulator/emulator_params_measured.json` | **CURRENT FOR RUN 002** - Regenerated from Feb 20 RTT drive (latency/loss + mag-aware sensor noise) | Ready for training |
-| `ml/espnow_emulator/emulator_params_LR_final.json` | **FUTURE** - After LR mode + clean drive | Not yet created |
+| `ml/espnow_emulator/emulator_params_measured.json` | **CURRENT** - Convoy-calibrated (Feb 24, cruising noise + healthy links) | Active — needs re-calibration from Recording #2 |
+| `ml/espnow_emulator/emulator_params_convoy.json` | Convoy-specific params (Feb 21 recording source) | Reference |
+| `ml/espnow_emulator/emulator_params_measured_rtt_backup.json` | Pre-convoy RTT-only params (backup) | Archive |
+| `ml/espnow_emulator/emulator_params_5m.json` | Original 5m stationary test data | Archive |
+| `ml/data/convoy_analysis_site/convoy_emulator_params.json` | Recording #2 extracted params (Feb 28) | **Pending re-calibration** |
+| `ml/data/convoy_analysis_extra/convoy_emulator_params.json` | Extra driving extracted params (Feb 28) | **Pending re-calibration** |
 
 ### Active Plans (CHECK THESE)
 
 | Document | Purpose | Priority |
 |----------|---------|----------|
-| `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` | **Mesh relay + continuous actions + cone filter** | **CRITICAL - START HERE** |
+| `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` | **Production model path: recordings → training** | **CRITICAL - START HERE** |
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
-| `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` | Production model path: recordings → training | HIGH - AFTER ARCH FIX |
-| `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps (Phases 1-5) | HIGH - REFERENCE |
+| `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` | Mesh relay + continuous actions + cone filter | **COMPLETED** (Phases A-G) |
+| `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps (Phases 1-5) | REFERENCE |
+| `docs/20_KNOWLEDGE_BASE/DATA_RECORDING_STRATEGY.md` | Recording protocol + axis mapping | REFERENCE |
 | `docs/10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md` | Reusable training AMI | **COMPLETED** (ami-03a3037588b0f34f2) |
 
 ### Completed Work (REFERENCE)
@@ -330,15 +354,14 @@ CURRENT FOCUS: Architecture Correction (Mesh + Continuous Actions + Cone Filter)
 ## For AI Agents: What To Do
 
 ### If returning after a break (start here)
-1. **READ FIRST:** `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` ► **HIGHEST PRIORITY**
+1. **READ FIRST:** `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` ► **PRODUCTION MODEL PATH**
 2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets architecture)
-3. **Current work:** Follow Phases A-F in the architecture correction document:
-   - Phase A: Cone filter (do first, no dependencies)
-   - Phase B: Continuous action space (parallel with A)
-   - Phase C: Emulator mesh relay (depends on A)
-   - Phase D: ConvoyEnv mesh (depends on C)
-   - Phase E: Firmware mesh (parallel with C/D)
-   - Phase F: Recording strategy
+3. **Reference:** `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` (ALL PHASES COMPLETE)
+4. **Current work:** Phase 6.3+ — Process real convoy data → augmentation → training
+   - Re-calibrate emulator from Recording #2 (use `--forward-axis y`)
+   - Process convoy logs → `ml/scenarios/base_real/`
+   - Generate dataset_v3 with real base + variable n
+   - Train Run 003 with corrected architecture
 
 ### If asked to work on ML/Training:
 1. **READ FIRST:** `DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (critical architecture)
@@ -403,5 +426,5 @@ CURRENT FOCUS: Architecture Correction (Mesh + Continuous Actions + Cone Filter)
 
 ---
 
-**Document Version:** 1.4
+**Document Version:** 1.5
 **Maintained By:** Bookkeeper Agent
