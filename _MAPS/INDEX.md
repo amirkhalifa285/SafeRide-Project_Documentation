@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** February 28, 2026
-**Total Documents:** 67
+**Last Updated:** March 1, 2026
+**Total Documents:** 68
 
 ---
 
@@ -30,8 +30,7 @@
 │  ✅ Phase 6.2: Recording #2 — GO (Feb 28, hard brake -8.63 m/s², mesh OK)  │
 │  ✅ Extra 10min regular driving captured (581.6s, adds diversity)            │
 │                                                                              │
-│  ► Phase 6.3: Re-calibrate emulator + process convoy → SUMO base           │
-│  ► Phase 6.4-6.5: Generate dataset_v3 + ML finalization                     │
+│  ✅ Prep Work: Emulator validated, convoy→SUMO, dataset_v3 generated        │
 │  ► Phase 6.6: Train Run 003 (mesh + continuous + cone filter + real data)   │
 │  ► Eval: 200-episode eval (n=1-5, hazards ON)                               │
 │  ► Phase 7: Quantization (TFLite INT8 for ESP32)                            │
@@ -70,7 +69,8 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 |----------|--------------|
 | [MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md) | Mesh + Continuous Action Correction ► ALL PHASES COMPLETE (A-G) |
 | [MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md) | Mesh + Action Correction Progress Tracker ► COMPLETE |
-| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► IMMEDIATE PRIORITY (Phase 6.3+ next) |
+| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► Run 003 next |
+| [PHASE_6_PREP_WORK_PLAN.md](../10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md) | **Phase 6 Prep Work** ✅ COMPLETE (Mar 1, 2026) — emulator validated, base_real built, dataset_v3 generated |
 | [AGENT_HANDOFF_FIELD_READINESS_PLAN.md](../10_PLANS_ACTIVE/AGENT_HANDOFF_FIELD_READINESS_PLAN.md) | **Field Readiness Handoff Plan** ► ACTIVE (Feb 12 implementation pass) |
 | [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | n-Element Deep Sets Implementation (Phases 1-5) |
 | [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) |
@@ -214,14 +214,15 @@ Implemented/completed plans, approved code reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES (In Order)
-1. **Re-calibrate emulator** - from Recording #2 data (both recordings, correct axis)
-2. **Process convoy → base_real/** - convert GPS trajectories to SUMO scenario
-3. **Generate dataset_v3** - real base + variable n augmentation
-4. **Run 003: Train** - mesh + continuous actions + cone filter + real data (first correct training)
+1. ~~Re-calibrate emulator~~ ✅ Validated (Mar 1, 2026)
+2. ~~Process convoy → base_real/~~ ✅ Built (Mar 1, 2026)
+3. ~~Generate dataset_v3~~ ✅ Generated (25 train + 10 eval, n=1-5 exact) (Mar 1, 2026)
+4. **Run 003: Train** - mesh + continuous actions + cone filter + real data (first correct training) ► NEXT
 5. **200-episode eval (n=1-5, hazards ON)** - prove Deep Sets handles variable n
 6. **Quantization** - TFLite INT8 for ESP32 deployment
 
 ### RECENTLY COMPLETED
+- ✅ **Phase 6 Prep Work (Steps 1-3) — COMPLETE** - Mar 1, 2026. Emulator params validated, convoy→SUMO base_real built (6 vehicles), dataset_v3 generated (25 train + 10 eval, exact n=1-5 coverage). Smoke train passed. [Plan](../10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md)
 - ✅ **Recording #2 + Extra Driving — GO** - Feb 28, 2026. Hard brake -8.63 m/s² (0.88g), mesh relay confirmed, ~13 min combined data. Axis mapping discovered (Y=forward). [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
 - ✅ **Architecture Correction Phases A-G** - Feb 26-28, 2026. Cone filter, continuous action space, mesh relay in emulator/ConvoyEnv/firmware, recording strategy, data collection. [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
 - ✅ **Convoy Recording #1 + Emulator Calibration** - Feb 21-24, 2026. Emulator calibrated from healthy links + cruising sensor noise.

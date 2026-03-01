@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** February 28, 2026
+**Last Updated:** March 1, 2026
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Phase 6.3+ — Augmentation, Re-calibration & Training
+## CURRENT PHASE: Phase 6.6 — Training Run 003
 
 ```
 ================================================================================
@@ -23,32 +23,31 @@
   ✅ Phase F: Recording Strategy Update (mesh-aware ego-only protocol)
   ✅ Phase G: Real Data Collection (Recording #2 + extra driving, GO verdict)
 
-  REAL DATA COLLECTION — COMPLETE (Feb 28, 2026)
+  PREP WORK — ALL COMPLETE (March 1, 2026)
 
-  Recording #2 (hazard protocol):
-    - 195.5s, V001 ego-only mesh logging
-    - Hard brake: -8.63 m/s² raw (0.88g) — far exceeds -3.0 target
-    - Mesh relay confirmed: 953 packets with hop>=1, max hop=2
-    - V002→V001 PDR: 0.852, V003→V001 PDR: 0.752 (relay compensates)
-
-  Extra regular driving:
-    - 581.6s (~10 min), no protocol stops
-    - Adds distance diversity (21m avg spacing vs 14m in main)
-
-  Combined: ~777s (~13 min), 19,883 TX + 15,860 RX rows
+  ✅ Step 1: Emulator params validated against Rec #2 (burst stats updated)
+  ✅ Step 2: Convoy logs processed into ml/scenarios/base_real/
+     - V002/V003 trajectories extracted from RX data
+     - OSM exported, network generated, single-edge route (-635191227)
+     - 6 vehicles: V001 ego + V002-V003 real + V004-V006 synthetic (ahead)
+     - Board placement: front windshield (production-realistic)
+  ✅ Step 3: dataset_v3 generated (25 train + 10 eval)
+     - 100% base_real derived (no synthetic mixing)
+     - Train: variable n via peer_drop_prob=0.4
+     - Eval: deterministic n=1,2,3,4,5 (exactly 2 each)
+     - Smoke train passed (run_20260301_025156, 1000 steps, hazards ON)
 
   ⚠️ CRITICAL: Board Y-axis is forward (braking axis, not X).
      Always use --forward-axis y with analyze_convoy_recording.py
 
 IMMEDIATE NEXT STEPS:
-  1. Re-calibrate emulator params from Recording #2 (both recordings)
-  2. Process convoy logs into ml/scenarios/base_real/
-  3. Generate dataset_v3 with augmentation (variable n, real base)
-  4. Training Run 003: mesh + continuous actions + cone filter + real data
-  5. 200-episode eval (n=1-5, hazards ON)
-  6. Quantization (TFLite INT8 for ESP32)
+  1. Training Run 003: 10M steps on EC2 (mesh + continuous + cone + real data)
+  2. 200-episode eval (n=1-5, hazards ON, 20 episodes per scenario)
+  3. Quantization (TFLite INT8 for ESP32)
+  4. Deploy on ESP32
 
 KEY DOCUMENTS:
+  - **Prep Work Plan:** 10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md (ALL COMPLETE)
   - **Phase 6 Pipeline:** 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md
   - **Architecture:** 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
   - **Arch Correction:** 10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md (COMPLETE)
@@ -61,6 +60,8 @@ DO NOT:
   - Use uncalibrated emulator params for production
   - Hardcode peer slots or use fixed observation space
   - Run analyzer without --forward-axis y (board Y = forward)
+  - Mix synthetic base scenarios into dataset_v3 (100% base_real only)
+  - Use route randomization flags with base_real (single route, silently no-ops)
 
 ================================================================================
 ```
@@ -70,35 +71,53 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Phases 1-4 + Arch Fix + Data)        NOW: TRAINING PIPELINE
+COMPLETED (All Prep)                              NOW: RUN 003 TRAINING
 ─────────────────────────────────────────────────────────────────────────────────
 
-[Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [Run 003: Production]
-  ✅ ConvoyEnv Dict Obs            ✅ A. Cone Filter (Python)     ► Re-calibrate emulator
-  ✅ Deep Sets Policy              ✅ B. Continuous Actions        ► Process convoy → base_real
-  ✅ Emulator Causality Fix        ✅ C. Emulator Mesh Relay      ► Generate dataset_v3
-  ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ► Train 10M steps
-  ✅ Run 001 (80%, n=2 only)       ✅ E. Firmware Mesh             ○ 200-ep evaluation
-  ✅ Run 002 (BASELINE ONLY)       ✅ F. Recording Strategy        ○ Quantize INT8
-  ✅ EC2 Training AMI              ✅ G. Real Data Collection      ○ Deploy on ESP32
-  ✅ Convoy Recording #1
-  ✅ Emulator calibrated
-  ✅ Recording #2 (GO) + Extra
+[Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
+  ✅ ConvoyEnv Dict Obs            ✅ A. Cone Filter (Python)     ✅ Emulator validated
+  ✅ Deep Sets Policy              ✅ B. Continuous Actions        ✅ base_real/ created
+  ✅ Emulator Causality Fix        ✅ C. Emulator Mesh Relay      ✅ dataset_v3 generated
+  ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ✅ Eval n=1-5 enforced
+  ✅ Run 001 (80%, n=2 only)       ✅ E. Firmware Mesh             ✅ Smoke train passed
+  ✅ Run 002 (BASELINE ONLY)       ✅ F. Recording Strategy
+  ✅ EC2 Training AMI              ✅ G. Real Data Collection    [Run 003: Production]
+  ✅ Convoy Recording #1                                          ► Train 10M steps
+  ✅ Emulator calibrated                                          ► 200-ep evaluation
+  ✅ Recording #2 (GO) + Extra                                    ○ Quantize INT8
+                                                                  ○ Deploy on ESP32
 
-CURRENT FOCUS: Phase 6.3+ (Emulator Re-calibration → Augmentation → Training)
+CURRENT FOCUS: Training Run 003
 ─────────────────────────────────────────────────────────────────────────────────
-  ► Re-calibrate emulator from Recording #2 data (correct axis)
-  ► Process convoy logs → SUMO base scenario (base_real/)
-  ► Generate dataset_v3 with real base + variable n augmentation
-  ► Training Run 003 (mesh + continuous + cone + real data)
-  ► 200-episode eval (n=1-5, hazard injection ON)
+  ► Launch Run 003 on EC2 (10M steps, dataset_v3, all corrections active)
+  ► 200-episode eval (n=1-5, 20 episodes per scenario, hazard injection ON)
+  ► Compare Run 003 vs Run 002 (baseline) on n=2
 
+  SEE: docs/10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md (ALL COMPLETE)
   SEE: docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md
 ```
 
 ---
 
 ## Recent Achievements
+
+### March 1, 2026 - Prep Work Complete — READY FOR RUN 003
+- **Step 1 (Emulator validation):** `emulator_params_measured.json` validated against Recording #2. Burst mean updated from 1.245 to ~1.6. Metadata annotated with Rec #2 cross-validation. Backup created.
+- **Step 2 (Convoy → SUMO):** Real convoy data processed into `ml/scenarios/base_real/`.
+  - V002/V003 trajectories extracted from V001 RX log (new feature in `analyze_convoy_recording.py`).
+  - OSM exported for recording area (rural road outside Deir Hanna, near Sonol station by Nahal Tzalmon).
+  - Network generated via NetConvert. Route locked to single driven edge `-635191227` (single-lane, matches recording).
+  - 6 vehicles: V001 (ego, rear) + V002-V003 (real trajectories) + V004-V006 (synthetic, ahead of V003).
+  - Board placement: front windshield of each car (production-realistic, good line-of-sight).
+- **Step 3 (dataset_v3):** 25 train + 10 eval scenarios generated from 100% base_real (no synthetic mixing).
+  - Train: `peer_drop_prob=0.4` gives natural n=1-5 distribution.
+  - Eval: deterministic n=1,2,3,4,5 (exactly 2 each) via `fix_eval_peer_counts.py`.
+  - Blocker resolved: eval dropout with seed=42 only produced 1x n=5. Fixed by adding `--eval_peer_drop_prob 0.0` to `gen_scenarios.py` (eval keeps all peers, fixer trims to exact counts).
+  - 1000-step smoke train passed (run_20260301_025156, hazard injection ON).
+  - 25 unit tests pass (gen_scenarios + fix_eval_peer_counts).
+- **New scripts:** `ml/scripts/process_convoy_to_sumo.py`, `ml/scripts/fix_eval_peer_counts.py`, `ml/scripts/validate_emulator_params.py`.
+- **Architect review:** dataset_v3 strategy approved. Key decisions: no synthetic merge, no route randomization (single route), 200-episode eval (10 scenarios x 20 episodes = 40 per n-value).
+- **Plan:** `docs/10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md` — ALL STEPS COMPLETE.
 
 ### Feb 28, 2026 - Convoy Recording #2 + Extra Data — GO VERDICT
 - **Recording #2 (hazard protocol):** 195.5s ego-only mesh recording. Hard braking -8.63 m/s² raw (0.88g). Mesh relay confirmed (953 relayed packets, max hop=2). V001 as ego.
@@ -226,18 +245,20 @@ CURRENT FOCUS: Phase 6.3+ (Emulator Re-calibration → Augmentation → Training
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `ml/espnow_emulator/emulator_params_measured.json` | **CURRENT** - Convoy-calibrated (Feb 24, cruising noise + healthy links) | Active — needs re-calibration from Recording #2 |
+| `ml/espnow_emulator/emulator_params_measured.json` | **CURRENT** - Convoy-calibrated (Feb 24) + validated against Rec #2 (March 1) | **Active — validated, burst stats updated** |
 | `ml/espnow_emulator/emulator_params_convoy.json` | Convoy-specific params (Feb 21 recording source) | Reference |
 | `ml/espnow_emulator/emulator_params_measured_rtt_backup.json` | Pre-convoy RTT-only params (backup) | Archive |
 | `ml/espnow_emulator/emulator_params_5m.json` | Original 5m stationary test data | Archive |
-| `ml/data/convoy_analysis_site/convoy_emulator_params.json` | Recording #2 extracted params (Feb 28) | **Pending re-calibration** |
-| `ml/data/convoy_analysis_extra/convoy_emulator_params.json` | Extra driving extracted params (Feb 28) | **Pending re-calibration** |
+| `ml/espnow_emulator/emulator_params_pre_v3_backup.json` | Pre-validation backup (Feb 24 original) | Archive |
+| `ml/data/convoy_analysis_site/convoy_emulator_params.json` | Recording #2 extracted params (Feb 28) | Reference (ego-only, inflated noise) |
+| `ml/data/convoy_analysis_extra/convoy_emulator_params.json` | Extra driving extracted params (Feb 28) | Reference (ego-only, inflated noise) |
 
 ### Active Plans (CHECK THESE)
 
 | Document | Purpose | Priority |
 |----------|---------|----------|
-| `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` | **Production model path: recordings → training** | **CRITICAL - START HERE** |
+| `docs/10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md` | **Prep work: validate + process + generate** | **COMPLETED** (Steps 1-3, March 1) |
+| `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` | **Production model path: recordings → training** | **CRITICAL - Run 003 next** |
 | `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` | n-Element problem solution | **CRITICAL - READ FIRST** |
 | `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` | Mesh relay + continuous actions + cone filter | **COMPLETED** (Phases A-G) |
 | `docs/10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md` | Implementation steps (Phases 1-5) | REFERENCE |
@@ -354,14 +375,14 @@ CURRENT FOCUS: Phase 6.3+ (Emulator Re-calibration → Augmentation → Training
 ## For AI Agents: What To Do
 
 ### If returning after a break (start here)
-1. **READ FIRST:** `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` ► **PRODUCTION MODEL PATH**
+1. **READ FIRST:** `docs/10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md` ► **ALL PREP COMPLETE**
 2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets architecture)
-3. **Reference:** `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md` (ALL PHASES COMPLETE)
-4. **Current work:** Phase 6.3+ — Process real convoy data → augmentation → training
-   - Re-calibrate emulator from Recording #2 (use `--forward-axis y`)
-   - Process convoy logs → `ml/scenarios/base_real/`
-   - Generate dataset_v3 with real base + variable n
-   - Train Run 003 with corrected architecture
+3. **Reference:** `docs/10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md` (production model path)
+4. **Current work:** Run 003 — Launch training on EC2
+   - Dataset: `ml/scenarios/datasets/dataset_v3/base_real/` (25 train + 10 eval, real-grounded)
+   - Emulator: `ml/espnow_emulator/emulator_params_measured.json` (validated)
+   - Architecture: mesh relay + continuous actions + cone filter (all active)
+   - Target: 10M steps, 200-episode eval (n=1-5, hazards ON)
 
 ### If asked to work on ML/Training:
 1. **READ FIRST:** `DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (critical architecture)
@@ -373,7 +394,7 @@ CURRENT FOCUS: Phase 6.3+ (Emulator Re-calibration → Augmentation → Training
    - Use max pooling for permutation invariance
    - Ensure route files are sorted by depart time (SUMO ignores unsorted entries)
    - **Training datasets MUST vary peer count** (n ∈ {1,2,3,4,5}), not just vehicle params
-   - **Next run (Run 002):** 10M timesteps with evaluation, variable n dataset
+   - **Next run (Run 003):** 10M timesteps, dataset_v3 (real-grounded), 200-ep eval
 
 ### If asked to work on ConvoyEnv:
 1. Observation space is already `Dict`; do not revert to `Box(11,)`
@@ -412,7 +433,8 @@ CURRENT FOCUS: Phase 6.3+ (Emulator Re-calibration → Augmentation → Training
 | ESP-NOW Emulator | 84/84 | ✅ Complete |
 | ConvoyEnv (Dict Obs) | 74/74 | ✅ Complete |
 | Deep Sets Policy | 6/6 | ✅ Complete |
-| **Total** | **206/206** | **100% Complete** |
+| Scenario Gen + Eval Fix | 25/25 | ✅ Complete |
+| **Total** | **231/231** | **100% Complete** |
 
 ---
 
