@@ -1,7 +1,7 @@
 # MESH + ACTION Architecture Correction Progress
 
 **Started:** February 26, 2026
-**Last Updated:** February 28, 2026
+**Last Updated:** March 2, 2026
 **Owner:** Amir + Codex
 
 ---
@@ -17,6 +17,7 @@
 | Phase E — Firmware Mesh Relay | ✅ Completed | Implemented with TDD; 18 tests passing |
 | Phase F — Recording Strategy Update | ✅ Completed | Mesh-aware ego-only protocol documented + validator updated + analyzer supports ego-only mode |
 | Phase G — Real Data Collection | ✅ Completed | Recording #2 + extra driving data captured; mesh relay validated in the field |
+| Phase H — Run 004 Preflight Behavior Validation | 🔄 In Progress | Session fixes complete; H0-H4 pending (plan v2.0 expanded scope) |
 
 ---
 
@@ -300,8 +301,29 @@ The board is mounted with **Y-axis forward** (braking direction). The analyzer w
 
 ---
 
-## Next Execution Step
+## Current Run-004 Blockers (March 2, 2026)
 
-- Re-calibrate emulator params from Recording #2 data (both recordings, using correct axis).
-- Process convoy logs into `ml/scenarios/base_real/` for dataset generation.
-- Proceed with Phase 6.3 (Augmentation Pipeline) and training.
+- ✅ Session fixes implemented and tested:
+  - Top-level behavioral metrics export in training eval output
+  - Emulator mesh hop-cap alignment (`max_relay_hops=3`)
+  - Measured-coverage-based mesh range gating
+  - Measured distance-bin packet loss model (with DR scaling)
+- 🔄 Still required before Run 004 (plan v2.0 — expanded scope):
+  - **H0:** MAX_DECEL 5.0 → 8.0 (real-world braking data correction)
+  - **H4:** Reward mesh-visibility gating (reward must use mesh-visible peers, not SUMO ground truth)
+  - **H1:** Hazard source targeting coverage (uniform_front_peers, not nearest-dominant)
+  - **H2:** Source-specific reaction evaluation (threshold=0.5 m/s², hazard_message_received_by_ego flag)
+  - **H3:** Deterministic eval matrix n=1..5 with per-source-rank coverage
+- 🔜 Post-training, pre-deployment:
+  - **H5:** Sim-to-real validation against real convoy recordings (777s data)
+
+### Key Decisions (March 2, 2026)
+- MAX_DECEL = 8.0 m/s² (measured -8.63 in real braking)
+- Cone filter 45° half-angle confirmed
+- Double cone filter (emulator relay + observation builder) is correct — two different purposes
+- SUMO CF model already cascades braking through convoy (chain reaction) — no code change needed
+- Comfort thresholds (0.5/3.0/4.5 m/s²) unchanged — human-centric, independent of MAX_DECEL
+
+See:
+- `docs/10_PLANS_ACTIVE/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md`
+- `docs/10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md` (v2.0)

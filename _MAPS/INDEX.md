@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** March 1, 2026
-**Total Documents:** 68
+**Last Updated:** March 2, 2026
+**Total Documents:** 70
 
 ---
 
@@ -61,7 +61,7 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (26 files)
+## 10_PLANS_ACTIVE (28 files)
 
 Current ongoing plans, TODOs, and work-in-progress execution plans.
 
@@ -84,6 +84,9 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Cloud Training AWS Execution Plan ✅ RUN 001 COMPLETE, Run 002 READY |
 | [EC2_AMI_CREATION_PLAN.md](../10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md) | **EC2 AMI Creation Plan** ✅ COMPLETED (ami-03a3037588b0f34f2) |
 | [RUN_002_EVAL_GAP_REVIEW.md](../10_PLANS_ACTIVE/RUN_002_EVAL_GAP_REVIEW.md) | Run 002 Eval Gap Review (n=3,4,5 still needed) |
+| [RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md) | Run 003 findings + root-cause review (updated Mar 2, 2026) |
+| [RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md) | Run 003 follow-up session fixes (metrics + emulator fidelity) |
+| [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | Pre-Run-004 blocker plan: hazard-source coverage + reaction eval |
 | [THREE_VEHICLE_CHARACTERIZATION_PLAN.md](../10_PLANS_ACTIVE/THREE_VEHICLE_CHARACTERIZATION_PLAN.md) | Three Vehicle Characterization Plan |
 
 ### Agent Prompts

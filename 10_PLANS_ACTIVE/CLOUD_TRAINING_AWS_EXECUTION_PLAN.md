@@ -1,9 +1,9 @@
 # AWS Cloud Training Execution Plan (RoadSense V2V)
 
-**Status:** ACTIVE - Preparing Run 002
+**Status:** ACTIVE - Run 003 IN PROGRESS
 **Goal:** Run full RL training on AWS while maintaining a strict $20/month budget.
 **Architect:** Master Architect (Interactive CLI)
-**Last Updated:** February 20, 2026
+**Last Updated:** March 2, 2026
 
 ---
 
@@ -12,9 +12,10 @@
 | Run ID | Instance | Started | Timesteps | Status |
 |--------|----------|---------|-----------|--------|
 | cloud_prod_001 | c6i.xlarge (On-Demand) | Jan 16, 2026 | 5M | **COMPLETED** (80% eval, n=2 only) |
-| cloud_prod_002 | c6i.xlarge (AMI-based, On-Demand) | Feb 21, 2026 | 10M | **TRAINING** |
+| cloud_prod_002 | c6i.xlarge (AMI-based, On-Demand) | Feb 21, 2026 | 10M | **COMPLETED** (baseline only — no mesh/cone/continuous) |
+| cloud_prod_003 | c6i.xlarge (AMI-based, On-Demand) | Mar 2, 2026 | 10M | **TRAINING** |
 
-**Run 002 results location:** `s3://saferide-training-results/cloud_prod_002/`
+**Run 003 results location:** `s3://saferide-training-results/cloud_prod_003/`
 
 ---
 
@@ -251,7 +252,7 @@ Before launching any training run, verify ALL of the following:
 
 ---
 
-## 🚀 Run 002: Production Model (Synthetic Base)
+## 🚀 Run 002: Baseline Model (Synthetic Base) — COMPLETED
 
 ### What Changed from Run 001
 
@@ -263,33 +264,76 @@ Before launching any training run, verify ALL of the following:
 | Launch method | Raw user-data (15 min setup) | **AMI-based (~2 min setup)** |
 | Augmentation | Speed/decel variation only | **+ peer dropout + route randomization** |
 
-### Launch Procedure (AMI-Based)
+**Classification:** BASELINE ONLY — trained without mesh relay, cone filter, or continuous actions.
 
-1. **Pre-flight:** Push latest code to GitHub (SafeRide repo)
-2. **Launch:** EC2 console -> Launch from `roadsense-training-v1` AMI
+### Lessons Learned (Run 002 S3 Failure)
+
+Run 002 training completed but **S3 upload and shutdown never ran**:
+- `set -euo pipefail` killed the script when training exited non-zero
+- IAM credentials also failed for manual upload attempts
+- Results had to be recovered manually via SSH
+
+**Fixes applied to `run_training.sh` for Run 003:**
+- `trap cleanup EXIT` guarantees S3 upload + shutdown
+- `set +e` / `set -e` around training step
+- Training log also uploaded to S3 for remote debugging
+
+---
+
+## 🚀 Run 003: Production Model (Real-Grounded) — TRAINING
+
+### What Changed from Run 002
+
+| Aspect | Run 002 | Run 003 |
+|--------|---------|---------|
+| Dataset | dataset_v2 (synthetic base) | **dataset_v3 (100% base_real, real convoy data)** |
+| Scenarios | 16 train / 4 eval | **25 train / 10 eval** |
+| Action space | Discrete(4) | **Continuous Box(1,)** |
+| Mesh relay | Not implemented | **Active (multi-hop emulator)** |
+| Cone filter | Not implemented | **Active (front FOV filtering)** |
+| Eval | 40 episodes | **200 episodes (20 per scenario, n=1-5)** |
+| Eval peer counts | Natural distribution | **Enforced: 2x each n=1,2,3,4,5** |
+| Hazard injection | Off | **ON (default)** |
+| S3 upload | Failed (script bug) | **Fixed (trap + set +e), dry-run validated** |
+
+### Launch Procedure (Dry-Run Validated)
+
+Run 003 used a manual dry-run approach instead of blind user-data:
+
+1. **Pre-flight:** Push latest code to GitHub (`roadsense-team/roadsense-v2v`, `master` branch)
+2. **Launch:** EC2 from `roadsense-training-v1` AMI, **no user-data** (dry-run)
    - Instance: c6i.xlarge, il-central-1
-   - IAM role: RoadSense-Trainer-Role
-   - User data: paste contents of `ml/scripts/cloud/run_training.sh` (with PAT filled in)
-   - Security group: SSH from your IP only
-3. **Monitor (optional):** SSH in, `tail -f /var/log/training-run.log`
-4. **Results:** Auto-uploaded to `s3://saferide-training-results/cloud_prod_002/`
-5. **Instance self-terminates** after training + upload
+   - IAM role: RoadSense-Trainer-Role (verified: `SafeRide-Trainer-Role`)
+   - Security group: SSH from IP only
+3. **SSH in and verify manually:**
+   - IAM credentials: `curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/`
+   - S3 access: `aws s3 ls s3://saferide-training-results/` (requires `export AWS_DEFAULT_REGION=il-central-1`)
+   - Git pull, Docker build, dataset generation, eval fixer — all run step by step
+   - S3 upload tested with dummy file
+4. **Training launched in tmux:** `tmux new -s train` (survives SSH disconnect)
+5. **Results:** Auto-uploaded to `s3://saferide-training-results/cloud_prod_003/`
+6. **Manual shutdown** after confirming upload: `sudo shutdown -h now`
 
 ### Training Config
 
 ```
 Algorithm:        PPO with Deep Sets
-Total Timesteps:  10,000,000 (~48h on c6i.xlarge)
+Total Timesteps:  10,000,000 (~8h on c6i.xlarge based on prior runs)
 Learning Rate:    3e-4
 Batch Size:       2048
 Entropy Coeff:    0.01
-Dataset:          dataset_v2/base_01 (16 train / 4 eval, variable n)
-Emulator:         emulator_params_measured.json (Feb 20 RTT drive)
+Dataset:          dataset_v3/base_real (25 train / 10 eval, 100% real-grounded)
+Emulator:         emulator_params_measured.json (convoy-calibrated, validated against Rec #2)
+Action Space:     Continuous Box(1,) — model outputs deceleration fraction
+Mesh Relay:       Active (multi-hop in emulator)
+Cone Filter:      Active (front FOV)
+Hazard Injection: ON (eval default)
+Eval:             200 episodes (20 per scenario x 10 scenarios)
 ```
 
 ### Cost Estimate
 
-- c6i.xlarge On-Demand: ~$0.20/hr x 48h = **~$10**
+- c6i.xlarge On-Demand: ~$0.20/hr x 8h = **~$2**
 - S3 storage: negligible
 - AMI storage: ~$0.50/month
-- **Total: ~$11** (within $20 budget)
+- **Total: ~$3** (well within $20 budget)
