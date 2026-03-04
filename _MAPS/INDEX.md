@@ -1,6 +1,6 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** March 2, 2026
+**Last Updated:** March 3, 2026
 **Total Documents:** 70
 
 ---
@@ -31,8 +31,10 @@
 │  ✅ Extra 10min regular driving captured (581.6s, adds diversity)            │
 │                                                                              │
 │  ✅ Prep Work: Emulator validated, convoy→SUMO, dataset_v3 generated        │
-│  ► Phase 6.6: Train Run 003 (mesh + continuous + cone filter + real data)   │
-│  ► Eval: 200-episode eval (n=1-5, hazards ON)                               │
+│  ✅ Run 003: 10M steps, failed, 6 bugs fixed (169 tests)                    │
+│  ✅ Phase H: H0/H1/H2/H3/H4 complete, dry-run gate complete (194 tests)     │
+│  ► Run 004: Push to git → EC2 training                                      │
+│  ► H5: Sim-to-real validation (post-training)                               │
 │  ► Phase 7: Quantization (TFLite INT8 for ESP32)                            │
 │                                                                              │
 │  ⚠️ Board Y-axis is forward. Always use --forward-axis y with analyzer.     │
@@ -86,7 +88,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [RUN_002_EVAL_GAP_REVIEW.md](../10_PLANS_ACTIVE/RUN_002_EVAL_GAP_REVIEW.md) | Run 002 Eval Gap Review (n=3,4,5 still needed) |
 | [RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md) | Run 003 findings + root-cause review (updated Mar 2, 2026) |
 | [RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md) | Run 003 follow-up session fixes (metrics + emulator fidelity) |
-| [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | Pre-Run-004 blocker plan: hazard-source coverage + reaction eval |
+| [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | **Run 004 plan (v2.2):** H0-H4 complete, dry-run gate done (15/15 buckets non-empty) |
 | [THREE_VEHICLE_CHARACTERIZATION_PLAN.md](../10_PLANS_ACTIVE/THREE_VEHICLE_CHARACTERIZATION_PLAN.md) | Three Vehicle Characterization Plan |
 
 ### Agent Prompts
@@ -220,9 +222,11 @@ Implemented/completed plans, approved code reviews, and historical documents.
 1. ~~Re-calibrate emulator~~ ✅ Validated (Mar 1, 2026)
 2. ~~Process convoy → base_real/~~ ✅ Built (Mar 1, 2026)
 3. ~~Generate dataset_v3~~ ✅ Generated (25 train + 10 eval, n=1-5 exact) (Mar 1, 2026)
-4. **Run 003: Train** - mesh + continuous actions + cone filter + real data (first correct training) ► NEXT
-5. **200-episode eval (n=1-5, hazards ON)** - prove Deep Sets handles variable n
-6. **Quantization** - TFLite INT8 for ESP32 deployment
+4. ~~Run 003: Train~~ ✅ Completed, policy failed, 6 bugs fixed
+5. **Phase H pre-training** ✅ H0-H4 complete + dry-run gate done (194 tests)
+6. **Run 004: Push → EC2 training** ► NEXT
+7. **H5: Sim-to-real validation** (post-training, pre-deployment)
+8. **Quantization** - TFLite INT8 for ESP32 deployment
 
 ### RECENTLY COMPLETED
 - ✅ **Phase 6 Prep Work (Steps 1-3) — COMPLETE** - Mar 1, 2026. Emulator params validated, convoy→SUMO base_real built (6 vehicles), dataset_v3 generated (25 train + 10 eval, exact n=1-5 coverage). Smoke train passed. [Plan](../10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md)

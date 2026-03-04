@@ -1,7 +1,7 @@
 # MESH + ACTION Architecture Correction Progress
 
 **Started:** February 26, 2026
-**Last Updated:** March 2, 2026
+**Last Updated:** March 3, 2026
 **Owner:** Amir + Codex
 
 ---
@@ -17,7 +17,7 @@
 | Phase E — Firmware Mesh Relay | ✅ Completed | Implemented with TDD; 18 tests passing |
 | Phase F — Recording Strategy Update | ✅ Completed | Mesh-aware ego-only protocol documented + validator updated + analyzer supports ego-only mode |
 | Phase G — Real Data Collection | ✅ Completed | Recording #2 + extra driving data captured; mesh relay validated in the field |
-| Phase H — Run 004 Preflight Behavior Validation | 🔄 In Progress | Session fixes complete; H0-H4 pending (plan v2.0 expanded scope) |
+| Phase H — Run 004 Preflight Behavior Validation | ✅ H0-H4 + Dry-Run Complete | H0/H1/H2/H3/H4 implemented, reviewed, bugs fixed; dry-run confirms 15/15 non-empty H3 buckets; 194 tests passing. H5 post-training. |
 
 ---
 
@@ -301,21 +301,35 @@ The board is mounted with **Y-axis forward** (braking direction). The analyzer w
 
 ---
 
-## Current Run-004 Blockers (March 2, 2026)
+## Run-004 Preflight Status (March 3, 2026)
 
-- ✅ Session fixes implemented and tested:
-  - Top-level behavioral metrics export in training eval output
-  - Emulator mesh hop-cap alignment (`max_relay_hops=3`)
-  - Measured-coverage-based mesh range gating
-  - Measured distance-bin packet loss model (with DR scaling)
-- 🔄 Still required before Run 004 (plan v2.0 — expanded scope):
-  - **H0:** MAX_DECEL 5.0 → 8.0 (real-world braking data correction)
-  - **H4:** Reward mesh-visibility gating (reward must use mesh-visible peers, not SUMO ground truth)
-  - **H1:** Hazard source targeting coverage (uniform_front_peers, not nearest-dominant)
-  - **H2:** Source-specific reaction evaluation (threshold=0.5 m/s², hazard_message_received_by_ego flag)
-  - **H3:** Deterministic eval matrix n=1..5 with per-source-rank coverage
-- 🔜 Post-training, pre-deployment:
-  - **H5:** Sim-to-real validation against real convoy recordings (777s data)
+### Pre-training phases — ALL COMPLETE
+- ✅ Session fixes (F-1 through F-4): metrics export, hop-cap, range gating, loss bins
+- ✅ **H0:** MAX_DECEL 5.0 → 8.0 (real-world braking data)
+- ✅ **H4:** Reward mesh-visibility gating (mesh-visible peers only, not SUMO ground truth)
+- ✅ **H1:** Hazard source targeting (4 strategies: nearest, uniform_front_peers, fixed_vehicle_id, fixed_rank_ahead)
+- ✅ **H2:** Source-specific reaction eval (threshold=0.5 m/s², hazard_message_received_by_ego, source_reaction_summary)
+- ✅ **H3:** Deterministic eval matrix (n=1..5, all source-rank buckets, coverage validator with fail-on-missing)
+
+### Architect review — ALL BUGS FIXED
+- ✅ H2 Bug 1: reception check no longer gated on `not reaction_detected`
+- ✅ H2 Bug 2: reaction detection starts after confirmed injection, not scheduled step
+- ✅ H2 Bug 3: `evaluate_model.py` schema synced (added `braking_signal_reception_rate`)
+- ✅ H3 Bug B1: `--use_deterministic_matrix` + `--no_hazard_injection` conflict guard added
+- ✅ H3 Bug B2: coverage failure now saves partial metrics before raising RuntimeError
+- ✅ H3 Bug B3: deterministic matrix planner now rotates rank assignments across same-peer-count scenarios (prevents scenario-lock bucket starvation)
+
+### Remaining gates
+- [x] Dry-run eval: confirmed non-empty (n, source-rank) buckets for n=1..5 (15/15)
+- [ ] Push to git + launch Run 004 on EC2
+- 🔜 **H5 (post-training):** Sim-to-real validation against real convoy recordings (777s data)
+
+### Unit test count: 194 passing (`pytest tests/unit/ -q`)
+
+### Dry-run evidence (March 3, 2026)
+- Artifact: `ml/models/runs/rs_smoke/eval_matrix_dry_run_after_planner_fix.json`
+- Result: `coverage_ok=false` for strict `episodes_per_bucket=10`, but **15/15 buckets non-empty** (gate requirement satisfied).
+- Note: Far-rank buckets can underfill strict per-bucket targets due hazard-step feasibility in dynamic convoy ordering.
 
 ### Key Decisions (March 2, 2026)
 - MAX_DECEL = 8.0 m/s² (measured -8.63 in real braking)
@@ -323,7 +337,8 @@ The board is mounted with **Y-axis forward** (braking direction). The analyzer w
 - Double cone filter (emulator relay + observation builder) is correct — two different purposes
 - SUMO CF model already cascades braking through convoy (chain reaction) — no code change needed
 - Comfort thresholds (0.5/3.0/4.5 m/s²) unchanged — human-centric, independent of MAX_DECEL
+- Reaction metric tracks RL braking command only — CF-model decel while released is excluded by design
 
 See:
 - `docs/10_PLANS_ACTIVE/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md`
-- `docs/10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md` (v2.0)
+- `docs/10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md` (v2.2)

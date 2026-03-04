@@ -1,10 +1,10 @@
 # Run 004 Plan: Hazard Targeting, Reward Realism, and Source-Specific Evaluation
 
 **Date:** March 2, 2026
-**Updated:** March 2, 2026 (Progress update after implementation + review fixes)
+**Updated:** March 3, 2026 (H3 dry-run coverage validation complete)
 **Owner:** Amir + Architect Agent + Codex
 **Priority:** CRITICAL (Pre-Run-004 Blocker)
-**Status:** IN PROGRESS — H0/H1/H2/H4 implemented and unit tested; H3/H5 pending
+**Status:** PRE-RUN-004 READY — H0/H1/H2/H3/H4 implemented; H3 dry-run confirms 15/15 non-empty buckets; H5 pending
 **TDD:** MANDATORY — Every change follows Red-Green-Refactor
 
 ---
@@ -60,13 +60,38 @@ Validate the trained model offline against real convoy recording data before fie
 - ✅ Reduced `HazardInjector.__init__` redundancy (fields no longer pre-set then overwritten by `_reset_state()`).
 - ✅ Documented intended semantics: reaction metric tracks **RL braking command**, not passive car-following decel while released.
 
+### H3 completion + architect-review fixes
+- ✅ **H3 complete:** Deterministic eval matrix with shared `ml/eval_matrix.py` module.
+  - Matrix planner generates episodes for all (n, source_rank) buckets.
+  - Coverage validator detects missing buckets and fails eval if incomplete.
+  - Integrated into both `train_convoy.py` and `evaluate_model.py`.
+  - CLI flags: `--eval_use_deterministic_matrix`, `--eval_matrix_peer_counts`, `--eval_matrix_episodes_per_bucket`.
+- ✅ Fixed B1: added `--use_deterministic_matrix` + `--no_hazard_injection` incompatibility guard.
+- ✅ Fixed B2: coverage failure now saves partial metrics before raising RuntimeError.
+
 ### Verification status
 - ✅ Full unit suite passed in `ml` venv:
-  - `pytest tests/unit/ -q` -> `187 passed`
+  - `pytest tests/unit/ -q` -> `194 passed`
 - ✅ New/updated test coverage added for:
   - `evaluate_model` source summary schema
   - `fixed_vehicle_id` behind-ego skip behavior
   - hazard instrumentation loop behavior in `train_convoy` eval (covers reception + reaction timing gates)
+  - `eval_matrix` planner bucket coverage, missing-peer-count fast-fail, coverage validator
+  - `eval_matrix` rank-target distribution across same-peer-count scenarios (fixes scenario-lock bias)
+
+### H3 Dry-Run Validation (March 3, 2026)
+- ✅ Deterministic matrix dry-run executed via Docker on:
+  - Dataset: `ml/scenarios/datasets/dataset_v3/base_real`
+  - Model: `ml/models/runs/rs_smoke/model_final.zip`
+  - Emulator params: `ml/espnow_emulator/emulator_params_measured.json`
+- ✅ Coverage result: **15/15 non-empty `(n, source-rank)` buckets** (`n=1..5`).
+- ✅ Artifact: `ml/models/runs/rs_smoke/eval_matrix_dry_run_after_planner_fix.json`
+- ✅ Planner bug fix applied before final dry-run:
+  - Previous deterministic planner could lock some ranks to one scenario.
+  - `ml/eval_matrix.py` now rotates rank targets across same-peer-count scenarios.
+- Note:
+  - Strict per-bucket minimum (`>=10` observed hazard episodes per bucket) can be missed in far-rank buckets due scenario dynamics/hazard-step feasibility.
+  - This does **not** block the documented gate item, which requires non-empty bucket coverage.
 
 ---
 
@@ -439,10 +464,10 @@ H5 is a post-training gate before real-world deployment.
 - [x] H1: Hazard injector supports uniform_front_peers + fixed strategies, tests pass
 - [x] H2: Source-specific eval metrics with reaction threshold = 0.5 m/s², tests pass
 - [x] H2: `hazard_message_received_by_ego` field populated in all eval episodes
-- [ ] H3: Deterministic eval matrix generated for n=1..5
+- [x] H3: Deterministic eval matrix generated for n=1..5
 - [x] `metrics.json` includes `source_reaction_summary` with reception_rate per bucket
 - [x] Full unit suite passes (`pytest tests/unit/ -q`)
-- [ ] Dry-run eval confirms non-empty buckets for all required `(n, source-rank)` combinations
+- [x] Dry-run eval confirms non-empty buckets for all required `(n, source-rank)` combinations
 
 If ANY item is unchecked, do not launch Run 004.
 
@@ -477,7 +502,7 @@ If ANY item is unchecked, do not launch Run 004.
 
 ---
 
-**Document Version:** 2.1
-**Previous Version:** 2.0 (March 2, 2026 — initial H0..H5 plan release)
+**Document Version:** 2.2
+**Previous Version:** 2.1 (March 2, 2026 — H0/H1/H2/H3/H4 implementation + review fixes)
 **Authors:** Amir Khalifa + Claude
-**Next Review:** After H3 deterministic eval-matrix implementation + dry-run coverage validation
+**Next Review:** After Run 004 launch and first training artifacts
