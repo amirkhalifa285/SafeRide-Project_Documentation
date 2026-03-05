@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 3, 2026 (H3 dry-run gate complete; Run 004 launch-ready)
+**Last Updated:** March 4, 2026 (Run 005 training launched on EC2)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Phase 6.8 — Run 004 Pre-Training + Dry-Run Complete, Launch Pending
+## CURRENT PHASE: Phase 6.9 — Run 005 Training In Progress
 
 ```
 ================================================================================
@@ -24,41 +24,42 @@
   ✅ Phase G: Real Data Collection (Recording #2 + extra driving, GO verdict)
 
   RUN 003 — COMPLETED, POLICY FAILED + POST-MORTEM DONE (March 2, 2026)
-
   ✅ Run 003: 10M steps, avg_reward=-6511, 6 root causes fixed (169 tests)
-  ✅ Session fixes: metrics export, emulator hop-cap/range/loss-bins alignment
 
-  RUN 004 PRE-TRAINING — ALL PHASES COMPLETE (March 2, 2026)
+  RUN 004 — COMPLETED, FIRST SUCCESSFUL MODEL (March 3, 2026)
+  ✅ Run 004: 10M steps, avg_reward=+352, 81% behavioral success
+  ⚠️ 19% collision rate (ALL 38 spawn-time, steps 3-32 — not model intelligence)
+  ⚠️ 0% V2V hazard reaction (model is passive, lets CF model handle it)
+  ⚠️ Eval matrix NOT used (cloud script was missing flags)
 
-  ✅ H0: MAX_DECEL corrected 5.0 → 8.0 m/s² (real braking = -8.63 m/s²)
-  ✅ H4: Reward uses mesh-visible peer distances (not SUMO ground truth)
-  ✅ H1: Hazard injector: 4 strategies (nearest, uniform_front_peers, fixed_vehicle_id, fixed_rank_ahead)
-  ✅ H2: Source-specific reaction eval (threshold=0.5 m/s², hazard_message_received_by_ego)
-  ✅ H3: Deterministic eval matrix (n=1..5, all source-rank buckets, coverage validator)
-  ✅ Architect review: 5 bugs found and fixed (3 in H2, 2 in H3)
-  ✅ Unit tests: 194 passing
+  RUN 005 — IN PROGRESS ON EC2 (March 4, 2026)
+  Fixes for Run 004 issues:
+  ✅ Fix 1: 30-step warmup in reset() prevents spawn-time collisions
+  ✅ Fix 2: Early reaction reward (+2.0) incentivizes V2V-based braking
+  ✅ Fix 3: Eval matrix flags wired into cloud script (15 buckets × 10 episodes)
+  ✅ Fix 4: HAZARD_PROBABILITY 0.3 → 0.5 (more training exposure)
+  ✅ Fix 5: Ego route-end guard (check is_vehicle_active BEFORE get_vehicle_state)
+  ✅ Fix 6: run_docker.sh array quoting (cmd="$*" → cmd=("$@"))
+  ✅ Unit tests: 201 passing
 
   ⚠️ CRITICAL: Board Y-axis is forward (braking axis, not X).
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ✅ All pre-training phases complete (H0/H1/H2/H3/H4)
-  ✅ Dry-run eval confirmed 15/15 non-empty (n, source-rank) buckets
-  ► Push to git + launch Run 004 on EC2
+  ✅ Run 005 training launched on EC2 (c6i.xlarge, ~8h)
+  ✅ Results will land at s3://saferide-training-results/cloud_prod_005/
   🔜 H5 (post-training): Sim-to-real validation against real recordings (777s)
 
-NEXT STEPS:
-  1. Push all changes to git
-  2. Launch Run 004 on EC2 (10M steps, dataset_v3, all corrections active)
-  3. H5: Validate trained model against real convoy recordings (offline replay)
-  4. Quantization (TFLite INT8 for ESP32)
-  5. Deploy on ESP32
-  6. Live SUMO demo for professors (add --gui to eval script)
+NEXT STEPS (after Run 005 completes):
+  1. Download results from S3, analyze metrics
+  2. H5: Validate trained model against real convoy recordings (offline replay)
+  3. Quantization (TFLite INT8 for ESP32)
+  4. Deploy on ESP32
+  5. Live SUMO demo for professors (add --gui to eval script)
 
 KEY DOCUMENTS:
   - **Run 004 Plan:** 10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md (v2.2)
   - **Arch Correction Progress:** 10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md
-  - **Run 003 Findings:** 10_PLANS_ACTIVE/RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md (ALL FIXES DONE)
   - **Architecture:** 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
   - **Phase 6 Pipeline:** 10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md
 
@@ -79,7 +80,7 @@ DO NOT:
   - Use MAX_DECEL = 5.0 — real braking is 8.0 m/s² (measured)
   - Compute reward distance from SUMO ground truth — must use mesh-visible peers
   - Run deterministic eval matrix with hazard injection disabled
-  - Skip source_reaction_summary in eval output — required for Run 004
+  - Skip source_reaction_summary in eval output — required for Run 004+
 
 ================================================================================
 ```
@@ -89,7 +90,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (All Prep + Run 003 + Phase H)        NOW: PUSH → TRAIN RUN 004
+COMPLETED (Runs 001-004 + All Architecture)        NOW: RUN 005 ON EC2
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -99,47 +100,145 @@ COMPLETED (All Prep + Run 003 + Phase H)        NOW: PUSH → TRAIN RUN 004
   ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ✅ Eval n=1-5 enforced
   ✅ Run 001 (80%, n=2 only)       ✅ E. Firmware Mesh             ✅ Smoke train passed
   ✅ Run 002 (BASELINE ONLY)       ✅ F. Recording Strategy
-  ✅ EC2 Training AMI              ✅ G. Real Data Collection    [Run 003: DONE — FAILED]
-  ✅ Convoy Recording #1                                          ✅ Train 10M steps
-  ✅ Emulator calibrated                                          ✅ Post-mortem: 6 bugs fixed
-  ✅ Recording #2 (GO) + Extra
-                                                               [Phase H: PRE-TRAIN — DONE]
-                                                                  ✅ H0: MAX_DECEL → 8.0
-                                                                  ✅ H4: Mesh-visible reward
-                                                                  ✅ H1: Hazard source diversity
-                                                                  ✅ H2: Source reaction eval
-                                                                  ✅ H3: Eval matrix n=1..5
-                                                                  ✅ 5 bugs found + fixed
-                                                                  ✅ 194 unit tests pass
-                                                                  ✅ H3 dry-run: 15/15 buckets non-empty
+  ✅ EC2 Training AMI              ✅ G. Real Data Collection    [Run 003: FAILED — 6 bugs fixed]
+  ✅ Convoy Recording #1                                        [Run 004: FIRST SUCCESS]
+  ✅ Emulator calibrated                                          ✅ avg_reward=+352, 81% success
+  ✅ Recording #2 (GO) + Extra                                    ⚠️ 19% spawn collisions
+                                                                  ⚠️ 0% V2V reaction
+[Phase H: PRE-TRAIN — DONE]
+  ✅ H0: MAX_DECEL → 8.0                                       [Run 005: IN PROGRESS]
+  ✅ H4: Mesh-visible reward                                      ✅ Warmup prevents spawn collisions
+  ✅ H1: Hazard source diversity                                  ✅ Early reaction reward (+2.0)
+  ✅ H2: Source reaction eval                                     ✅ Eval matrix wired (15 buckets)
+  ✅ H3: Eval matrix n=1..5                                       ✅ Hazard prob 0.5 (was 0.3)
+  ✅ 201 unit tests pass                                          ✅ Ego route-end guard
+                                                                  ► Training on EC2 (~8h)
 
-                                                               [Run 004: NEXT]
-                                                                  ► Push to git
-                                                                  ► Launch on EC2
-                                                                  ○ H5: Sim-to-real validation
-                                                                  ○ Quantize INT8
-                                                                  ○ Deploy on ESP32
-
-CURRENT FOCUS: Run 004 — Push → EC2 Training
+CURRENT FOCUS: Run 005 Training → Analyze → H5 Sim-to-Real
 ─────────────────────────────────────────────────────────────────────────────────
-  ✅ Run 003 post-mortem: 6 root causes fixed (169 unit tests)
-  ✅ Phase H pre-training: H0/H1/H2/H3/H4 implemented + reviewed (194 unit tests)
-  ✅ H3 dry-run matrix gate: 15/15 non-empty buckets confirmed
-  ✅ Key improvements over Run 003:
-     - MAX_DECEL 8.0 (was 5.0) — matches real emergency braking
-     - Reward from mesh-visible peers only (was SUMO ground truth)
-     - Hazard source diversity (was nearest-only)
-     - Deterministic eval matrix with per-source-rank coverage
-     - Source-specific reaction metrics (reception, timing, safety)
-  ► Push to git, launch Run 004 on EC2
+  ✅ Run 004 completed: +352 avg reward, 81% behavioral success (first working model!)
+  ✅ Run 005 fixes: spawn warmup, V2V reaction reward, eval matrix, hazard 50%
+  ✅ Infra fixes: run_docker.sh quoting bug, ego route-end guard
+  ► Run 005 training on EC2 (10M steps, dataset_v3, all corrections active)
+  ○ H5: Sim-to-real validation against real recordings
+  ○ Quantize INT8 for ESP32
+  ○ Deploy on ESP32
+  ○ Live SUMO demo for professors
 
   SEE: docs/10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md (v2.2)
-  SEE: docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md
 ```
 
 ---
 
+## EC2 Training Procedure (PROVEN — Use This Exactly)
+
+Every single training run (002-005) had launch issues. This procedure is the one that
+actually works. Do NOT deviate. Do NOT paste run_training.sh into EC2 user-data.
+
+### Step 1: Launch EC2 Instance (AWS Console, il-central-1)
+
+| Setting | Value |
+|---------|-------|
+| AMI | My AMIs → `roadsense-training-v1` (`ami-03a3037588b0f34f2`) |
+| Instance type | `c6i.xlarge` |
+| Key pair | `SafeRideKey` |
+| Security group | Existing (SSH port 22) |
+| IAM instance profile | `SafeRide-Trainer-Role` |
+| User data | **LEAVE EMPTY** |
+
+### Step 2: SSH In
+
+```bash
+ssh -i ~/Downloads/saferide-key.pem ubuntu@<PUBLIC_IP>
+```
+
+### Step 3: Setup + Run (inside tmux)
+
+```bash
+tmux new -s train
+cd /home/ubuntu/work
+git config --global --add safe.directory /home/ubuntu/work
+git pull origin master
+chmod +x ml/run_docker.sh
+```
+
+Verify code landed (adapt grep patterns to match the current run's changes):
+```bash
+grep "cloud_prod_0" ml/scripts/cloud/run_training.sh   # check RUN_ID
+```
+
+Disable auto-shutdown and git-pull in the script (we already pulled manually):
+```bash
+sed -i 's|shutdown -h now|echo "DONE — shutdown skipped"|' ml/scripts/cloud/run_training.sh
+sed -i 's|<YOUR_PAT_HERE>|SKIP|' ml/scripts/cloud/run_training.sh
+sed -i 's|git pull origin master|echo "SKIP git pull — already pulled"|' ml/scripts/cloud/run_training.sh
+sed -i 's|git remote set-url origin "https://${GITHUB_PAT}@|echo "SKIP remote URL change" #|' ml/scripts/cloud/run_training.sh
+sed -i 's|git remote set-url origin https://github.com|echo "SKIP remote URL restore" #|' ml/scripts/cloud/run_training.sh
+```
+
+Run the script:
+```bash
+sudo bash ml/scripts/cloud/run_training.sh
+```
+
+(`sudo` needed because the script writes to `/var/log/training-run.log` via `exec`.)
+
+### Step 4: Monitor (optional)
+
+Open a second tmux pane (`Ctrl+B` then `%`):
+```bash
+tail -f /var/log/training-run.log
+```
+
+Detach tmux: `Ctrl+B` then `D`. Disconnect SSH. Safe to close laptop.
+Training runs ~8h. S3 upload happens automatically when training finishes.
+
+### Step 5: After Training
+
+Results auto-upload to `s3://saferide-training-results/<RUN_ID>/`.
+**Stop the instance from the AWS Console** (it does NOT auto-shutdown with the sed fix).
+
+### Why This Works (And Previous Attempts Failed)
+
+| Run | Failure | Root Cause |
+|-----|---------|------------|
+| 002 | S3 upload never ran | `set -euo pipefail` killed script before cleanup. Fixed with `trap cleanup EXIT`. |
+| 003 | Training produced garbage | 6 code bugs (action release, reward thresholds, etc). Policy failures, not infra. |
+| 004 | Step 5/7 SyntaxError | `run_docker.sh` used `cmd="$*"` (string flattening) + unquoted `$cmd`. Multi-line `python3 -c` arg got word-split. Fixed with `cmd=("$@")` + `"${cmd[@]}"`. |
+| 005a | Instant SSH disconnect | Ran `sudo bash run_training.sh` which still had `shutdown -h now`. First error triggered cleanup trap → shutdown. Fixed by sed-disabling shutdown before running. |
+| 005b | TraCIException mid-episode | V001 reached end-of-route. `step()` called `get_vehicle_state()` BEFORE checking `is_vehicle_active()`. Fixed by adding early exit guard. |
+
+**Key principles:**
+1. **Never use user-data** — SSH in and run manually so you can see errors in real-time.
+2. **Pull code manually** before running the script — avoids PAT/auth issues inside the script.
+3. **Disable shutdown** with sed — prevents the instance from vanishing when something fails.
+4. **Use tmux** — SSH disconnect won't kill training.
+5. **Always verify code landed** with grep before running — catches missed pushes.
+
+---
+
 ## Recent Achievements
+
+### March 4, 2026 - Run 005 Training Launched on EC2
+
+**Run 005 fixes (addressing Run 004 issues):**
+- **Fix 1 — Spawn warmup:** Added 30-step warmup in `convoy_env.py:reset()` after ego spawn. SUMO's CF model stabilizes the convoy before RL takes over. Prevents all 38 spawn-time collisions seen in Run 004.
+- **Fix 2 — V2V early reaction reward:** New `_early_reaction_bonus()` in `reward_calculator.py`. Gives +2.0 reward when model brakes proactively (decel > 0.5 m/s²) while in safe zone (>10m) AND a braking peer is detected via mesh. Outweighs mild comfort penalty, making proactive V2V-based braking optimal.
+- **Fix 3 — Eval matrix flags:** `run_training.sh` now passes `--eval_use_deterministic_matrix --eval_matrix_peer_counts "1,2,3,4,5" --eval_matrix_episodes_per_bucket 10`. Generates ~150 eval episodes covering all 15 (n, source_rank) buckets.
+- **Fix 4 — Hazard probability:** `HAZARD_PROBABILITY` raised from 0.3 to 0.5. Model now sees hazards in 50% of training episodes (was 30%).
+- **Fix 5 — Ego route-end guard:** `step()` now checks `is_vehicle_active(V001)` immediately after `sumo.step()`, BEFORE calling `get_vehicle_state()`. If V001 reached end-of-route, returns empty observation + truncated=True. Previously crashed with `TraCIException: Vehicle 'V001' is not known`.
+- **Fix 6 — run_docker.sh quoting:** Changed `cmd="$*"` (string) to `cmd=("$@")` (array) and `$cmd` to `"${cmd[@]}"`. Fixes word-splitting of `python3 -c "multi-line code"` in pass-through mode. This was the Run 004 cloud script failure.
+- **Unit tests:** 201/201 passing (up from 194).
+- **Expected improvements over Run 004:** collision rate <5% (was 19%), hazard reaction >50% (was 0%), eval coverage 15/15 buckets (was random).
+- **Results will land at:** `s3://saferide-training-results/cloud_prod_005/`
+
+### March 3, 2026 - Run 004 Results: First Successful Model
+
+- **Run 004 result:** avg_reward=+352, 81% behavioral success rate — a massive jump from Run 003's -6511.
+- **Collision analysis:** 38 collisions (19% rate), but ALL 38 are spawn-time (steps 3-32, avg step 14.4). Zero mid-episode collisions. This is an initialization problem, not a model intelligence failure.
+- **V2V reaction:** 0% reaction to hazard messages. Model survives hazards passively via SUMO's Krauss CF model. The reward structure made active braking sub-optimal (comfort penalty outweighed any benefit).
+- **Eval coverage gap:** Deterministic eval matrix (H3) was not used because cloud script was missing the flags. Only ~24% of episodes received hazards (random probability).
+- **Verdict:** Model works but needs three fixes before thesis-ready (spawn warmup, reaction reward, eval matrix). These became Run 005.
 
 ### March 3, 2026 - H3 Dry-Run Gate Complete (Run 004 Launch-Ready)
 - Deterministic eval matrix dry-run executed in Docker on `dataset_v3/base_real`.
@@ -465,16 +564,14 @@ CURRENT FOCUS: Run 004 — Push → EC2 Training
 ## For AI Agents: What To Do
 
 ### If returning after a break (start here)
-1. **READ FIRST:** `docs/10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md` ► **v2.2 — H0-H4 + dry-run gate complete**
+1. **READ FIRST:** This file (PROJECT_STATUS_OVERVIEW.md) — check current phase at the top
 2. **Read:** `docs/00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (Deep Sets architecture)
-3. **Reference:** `docs/10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md` (full history)
-4. **Current work:** Run 004 — push to git, launch on EC2
-   - All pre-training phases complete: H0/H1/H2/H3/H4 (194/194 tests)
-   - Dry-run gate complete: 15/15 non-empty `(n, source-rank)` buckets confirmed
-   - Dataset: `ml/scenarios/datasets/dataset_v3/base_real/` (25 train + 10 eval)
-   - Key improvements: MAX_DECEL=8.0, mesh-visible reward, hazard source diversity, eval matrix n=1..5
-   - Target: 10M steps, deterministic eval matrix (15 buckets × 10 episodes), hazards ON
-   - Post-training: H5 sim-to-real validation against real recordings
+3. **Reference:** `docs/10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md` (v2.2)
+4. **Current work:** Run 005 training on EC2 (March 4, 2026)
+   - Results will be at: `s3://saferide-training-results/cloud_prod_005/`
+   - 201/201 unit tests passing
+   - Post-training: download results, analyze, then H5 sim-to-real validation
+5. **If launching a new training run:** See "EC2 Training Procedure" section above — follow it EXACTLY
 
 ### If asked to work on ML/Training:
 1. **READ FIRST:** `DEEP_SETS_N_ELEMENT_ARCHITECTURE.md` (critical architecture)
@@ -527,9 +624,10 @@ CURRENT FOCUS: Run 004 — Push → EC2 Training
 | Deep Sets Policy | 6/6 | ✅ Complete |
 | Scenario Gen + Eval Fix | 25/25 | ✅ Complete |
 | Eval Matrix | 4/4 | ✅ Complete |
-| **Total (non-SUMO `tests/unit/`)** | **194/194** | **100% passing** |
+| Reward Calculator | 25/25 | ✅ Complete (incl. early reaction) |
+| **Total (non-SUMO `tests/unit/`)** | **201/201** | **100% passing** |
 
-Note: The 194 count is the `tests/unit/` suite run locally without SUMO. Integration tests require SUMO via Docker (`./run_docker.sh integration`).
+Note: The 201 count is the `tests/unit/` suite run locally without SUMO. Integration tests require SUMO via Docker (`./run_docker.sh integration`).
 
 ---
 
@@ -543,5 +641,5 @@ Note: The 194 count is the `tests/unit/` suite run locally without SUMO. Integra
 
 ---
 
-**Document Version:** 1.8
+**Document Version:** 1.9
 **Maintained By:** Bookkeeper Agent
