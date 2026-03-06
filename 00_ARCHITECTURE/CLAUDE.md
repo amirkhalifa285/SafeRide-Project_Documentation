@@ -70,7 +70,7 @@
   - **Approach:** Reinforcement Learning (**PPO**) with **Deep Sets** architecture.
   - **Architecture:** Permutation-invariant set encoder solves the n-element problem.
   - **Action Space:** **Continuous `Box(1,)`** — model outputs deceleration fraction [0.0, 1.0].
-  - **Observation:** Dict space with ego state (4-dim) + variable peer set (up to 8, 6-dim each).
+  - **Observation:** Dict space with ego state (5-dim) + variable peer set (up to 8, 6-dim each).
   - **Agent:** Runs on **V001 (Ego Vehicle)** only.
   - **Input:** V2V messages from mesh network (direct + relayed) + Ego state.
   - **Deployment:** TensorFlow Lite for Microcontrollers (Quantized INT8).

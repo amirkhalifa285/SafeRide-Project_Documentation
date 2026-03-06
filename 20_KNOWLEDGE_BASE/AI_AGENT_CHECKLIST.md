@@ -258,9 +258,33 @@ def _check_burst_loss(self, vehicle_id):
 
 ---
 
+### March 5, 2026 - Run 006 Reward-Economics Collapse (Run 007 Strategy B+ Fix)
+
+**Mistake:**
+1. Added hazard-specific penalties/bonuses that looked correct in unit tests.
+2. Trigger condition (`any_braking_peer`) fired during normal SUMO convoy behavior.
+3. Episode-level reward economics became non-learnable despite green tests.
+
+**Impact:**
+- Run 006 policy diverged with severe negative reward.
+- EC2 budget/time wasted on a run that should have been blocked pre-flight.
+
+**Fix Applied (Run 007 prep):**
+- Restored reward economics to Run 004 baseline (safety + comfort + appropriateness).
+- Kept Run 006 infrastructure improvements (GT collision, warmup, reset, 5-dim ego).
+- Hardened braking-peer analytics signal to hard decel only; removed low-speed trigger.
+
+**Prevention (MANDATORY before EC2):**
+- Add a reward-economics gate to pre-flight:
+  1. Run non-hazard episodes and verify hazard-specific terms do not dominate.
+  2. Compare per-component cumulative reward totals across full episodes.
+  3. Block launch if one penalty overwhelms the reward budget.
+
+---
+
 **Prevention:** 2 minutes of verification saves hours of debugging.
 
 ---
 
-**Last Updated:** December 26, 2025
-**Updated By:** ESPNOWEmulator refactor lessons - TDD violations and causality bugs
+**Last Updated:** March 5, 2026
+**Updated By:** Run 007 Strategy B+ documentation update (reward-economics pre-flight lessons)

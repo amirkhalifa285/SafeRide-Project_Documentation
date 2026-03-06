@@ -1,7 +1,7 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** March 3, 2026
-**Total Documents:** 70
+**Last Updated:** March 5, 2026
+**Total Documents:** 71
 
 ---
 
@@ -33,7 +33,11 @@
 │  ✅ Prep Work: Emulator validated, convoy→SUMO, dataset_v3 generated        │
 │  ✅ Run 003: 10M steps, failed, 6 bugs fixed (169 tests)                    │
 │  ✅ Phase H: H0/H1/H2/H3/H4 complete, dry-run gate complete (194 tests)     │
-│  ► Run 004: Push to git → EC2 training                                      │
+│  ✅ Run 004: FIRST SUCCESS (+352 reward, 81% success)                        │
+│  ❌ Run 005: REGRESSED (+175 reward, 26.4% collisions, 0% V2V reaction)     │
+│  ❌ Run 006: EC2 run failed (reward trigger overreach during normal driving)  │
+│  ✅ Run 007 Strategy B+: implemented + unit/integration suites passed         │
+│  ► Run 007: Push to git → EC2 training                                       │
 │  ► H5: Sim-to-real validation (post-training)                               │
 │  ► Phase 7: Quantization (TFLite INT8 for ESP32)                            │
 │                                                                              │
@@ -42,10 +46,10 @@
 ```
 
 **Start Here:**
-- **IMMEDIATE:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) ► **PRODUCTION MODEL PATH**
+- **IMMEDIATE:** [Run 007 Strategic Analysis](../10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md) ► **Section 13 = implemented status + launch prep**
+- **Pipeline:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) ► **PRODUCTION MODEL PATH**
 - **Architecture:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
 - **Reference:** [Cloud Run 002 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_002_RESULTS.md) ► 40 episodes with per-n metrics
-- **Professor Response:** [Professor Comments Response](../10_PLANS_ACTIVE/PROFESSOR_COMMENTS_RESPONSE_PLAN.md)
 
 ---
 
@@ -88,6 +92,7 @@ Current ongoing plans, TODOs, and work-in-progress execution plans.
 | [RUN_002_EVAL_GAP_REVIEW.md](../10_PLANS_ACTIVE/RUN_002_EVAL_GAP_REVIEW.md) | Run 002 Eval Gap Review (n=3,4,5 still needed) |
 | [RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md) | Run 003 findings + root-cause review (updated Mar 2, 2026) |
 | [RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md) | Run 003 follow-up session fixes (metrics + emulator fidelity) |
+| [RUN_006_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_006_FIX_PLAN.md) | **Run 006 fix plan:** 7 root causes, all Docker-validated (211 unit + 19 integration tests) |
 | [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | **Run 004 plan (v2.2):** H0-H4 complete, dry-run gate done (15/15 buckets non-empty) |
 | [THREE_VEHICLE_CHARACTERIZATION_PLAN.md](../10_PLANS_ACTIVE/THREE_VEHICLE_CHARACTERIZATION_PLAN.md) | Three Vehicle Characterization Plan |
 
@@ -223,10 +228,13 @@ Implemented/completed plans, approved code reviews, and historical documents.
 2. ~~Process convoy → base_real/~~ ✅ Built (Mar 1, 2026)
 3. ~~Generate dataset_v3~~ ✅ Generated (25 train + 10 eval, n=1-5 exact) (Mar 1, 2026)
 4. ~~Run 003: Train~~ ✅ Completed, policy failed, 6 bugs fixed
-5. **Phase H pre-training** ✅ H0-H4 complete + dry-run gate done (194 tests)
-6. **Run 004: Push → EC2 training** ► NEXT
-7. **H5: Sim-to-real validation** (post-training, pre-deployment)
-8. **Quantization** - TFLite INT8 for ESP32 deployment
+5. ~~Phase H pre-training~~ ✅ H0-H4 complete + dry-run gate done (194 tests)
+6. ~~Run 004~~ ✅ First success (+352, 81% success). 19% spawn collisions, 0% V2V reaction
+7. ~~Run 005~~ ❌ Regressed (+175, 26.4% collisions). Unit tests ≠ real physics
+8. ~~Run 006 pre-training~~ ✅ 7 root causes fixed, Docker-validated (211+19 tests)
+9. **Run 006: Push → EC2 training** ► NEXT
+10. **H5: Sim-to-real validation** (post-training, pre-deployment)
+11. **Quantization** - TFLite INT8 for ESP32 deployment
 
 ### RECENTLY COMPLETED
 - ✅ **Phase 6 Prep Work (Steps 1-3) — COMPLETE** - Mar 1, 2026. Emulator params validated, convoy→SUMO base_real built (6 vehicles), dataset_v3 generated (25 train + 10 eval, exact n=1-5 coverage). Smoke train passed. [Plan](../10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md)
