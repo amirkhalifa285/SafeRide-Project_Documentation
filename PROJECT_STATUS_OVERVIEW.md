@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 6, 2026 (Run 008 failed — std exploded; Run 009 "Active V2V + Stability" launched)
+**Last Updated:** March 7, 2026 (Run 008 root cause updated — 3rd cause: entropy-driven std drift; Run 009 relaunching on EC2)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 

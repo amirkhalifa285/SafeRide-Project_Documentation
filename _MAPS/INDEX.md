@@ -1,55 +1,26 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** March 5, 2026
-**Total Documents:** 71
+**Last Updated:** March 7, 2026
+**Total Documents:** 71+
 
 ---
 
 ## CURRENT PROJECT STATUS
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  ARCHITECTURE CORRECTIONS — ALL COMPLETE (Feb 26-28, 2026)                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ✅ Phase A: Cone Filter (Python observation pipeline)                       │
-│  ✅ Phase B: Continuous Action Space (Box(1,) replaces Discrete(4))          │
-│  ✅ Phase C: Mesh Relay in Emulator (multi-hop simulation)                   │
-│  ✅ Phase D: Mesh in ConvoyEnv (simulate_mesh_step integration)              │
-│  ✅ Phase E: Firmware Mesh Relay (ConeFilter + MeshRelayPolicy, 18 tests)    │
-│  ✅ Phase F: Recording Strategy Update (mesh-aware ego-only protocol)        │
-│  ✅ Phase G: Real Data Collection (Recording #2 GO + extra driving)          │
-│                                                                              │
-│  See: MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md                    │
-│  Run 002 is BASELINE ONLY — trained without mesh/cone/continuous actions.    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  PHASE 6: Real Data Pipeline - Production Model Path                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ✅ Phases 1-4: ML Architecture COMPLETE (Deep Sets, ConvoyEnv, Emulator)   │
-│  ✅ Cloud Run 002: 100% success (40ep) BUT only n=1,2 - Feb 21, 2026       │
-│  ✅ Emulator calibrated from convoy data (cruising noise) - Feb 24, 2026    │
-│  ✅ Phase 6.2: Recording #2 — GO (Feb 28, hard brake -8.63 m/s², mesh OK)  │
-│  ✅ Extra 10min regular driving captured (581.6s, adds diversity)            │
-│                                                                              │
-│  ✅ Prep Work: Emulator validated, convoy→SUMO, dataset_v3 generated        │
-│  ✅ Run 003: 10M steps, failed, 6 bugs fixed (169 tests)                    │
-│  ✅ Phase H: H0/H1/H2/H3/H4 complete, dry-run gate complete (194 tests)     │
-│  ✅ Run 004: FIRST SUCCESS (+352 reward, 81% success)                        │
-│  ❌ Run 005: REGRESSED (+175 reward, 26.4% collisions, 0% V2V reaction)     │
-│  ❌ Run 006: EC2 run failed (reward trigger overreach during normal driving)  │
-│  ✅ Run 007 Strategy B+: implemented + unit/integration suites passed         │
-│  ► Run 007: Push to git → EC2 training                                       │
-│  ► H5: Sim-to-real validation (post-training)                               │
-│  ► Phase 7: Quantization (TFLite INT8 for ESP32)                            │
-│                                                                              │
-│  ⚠️ Board Y-axis is forward. Always use --forward-axis y with analyzer.     │
-└─────────────────────────────────────────────────────────────────────────────┘
+ Run 009 IN PROGRESS on EC2 (March 7, 2026)
+ Stability fixes: LR=1e-4, n_steps=4096, log_std_init=-0.5, ent_coef=0.0
+ Reward: REWARD_SAFE=4.0, REWARD_FAR=-2.0, RAMP_HIGH=4.0
+ 221 unit tests + 19 integration tests passing
+
+ See: PROJECT_STATUS_OVERVIEW.md for full history (Runs 003-009)
 ```
 
 **Start Here:**
-- **IMMEDIATE:** [Run 007 Strategic Analysis](../10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md) ► **Section 13 = implemented status + launch prep**
-- **Pipeline:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) ► **PRODUCTION MODEL PATH**
+- **Status:** [PROJECT_STATUS_OVERVIEW.md](../PROJECT_STATUS_OVERVIEW.md) - Single source of truth
+- **Strategy:** [Run 007 Strategic Analysis](../10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md) - Active reward/stability strategy
+- **Pipeline:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) - Production model path
 - **Architecture:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
-- **Reference:** [Cloud Run 002 Results](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_002_RESULTS.md) ► 40 episodes with per-n metrics
 
 ---
 
@@ -57,222 +28,169 @@
 
 System description, contracts, and high-level design documents.
 
-| Document | Display Name |
-|----------|--------------|
-| [DEEP_SETS_N_ELEMENT_ARCHITECTURE.md](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) | **Deep Sets: n-Element Problem** ► CURRENT (Jan 2026) |
-| [ARCHITECTURE_V2_MINIMAL_RL.md](../00_ARCHITECTURE/ARCHITECTURE_V2_MINIMAL_RL.md) | Architecture V2: Minimal RL *(obs space SUPERSEDED)* |
+| Document | Description |
+|----------|-------------|
+| [DEEP_SETS_N_ELEMENT_ARCHITECTURE.md](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) | Deep Sets: n-Element Problem (CURRENT) |
+| [ARCHITECTURE_V2_MINIMAL_RL.md](../00_ARCHITECTURE/ARCHITECTURE_V2_MINIMAL_RL.md) | Architecture V2: Minimal RL (obs space SUPERSEDED) |
 | [CLAUDE.md](../00_ARCHITECTURE/CLAUDE.md) | RoadSense V2V Project Context |
 | [ESPNOW_EMULATOR_DESIGN.md](../00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md) | ESP-NOW Emulator Design Document |
-| [RoadSense2-SRS-2025.md](../00_ARCHITECTURE/RoadSense2-SRS-2025.md) | RoadSense V2V System - Software Requirements Specification |
+| [RoadSense-SRS-Final.md](../00_ARCHITECTURE/RoadSense-SRS-Final.md) | Software Requirements Specification |
 
 ---
 
-## 10_PLANS_ACTIVE (28 files)
+## 10_PLANS_ACTIVE (5 files)
 
-Current ongoing plans, TODOs, and work-in-progress execution plans.
+Active plans with open work items.
 
-| Document | Display Name |
-|----------|--------------|
-| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md) | Mesh + Continuous Action Correction ► ALL PHASES COMPLETE (A-G) |
-| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md) | Mesh + Action Correction Progress Tracker ► COMPLETE |
-| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | **Phase 6: Real Data Pipeline** ► Run 003 next |
-| [PHASE_6_PREP_WORK_PLAN.md](../10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md) | **Phase 6 Prep Work** ✅ COMPLETE (Mar 1, 2026) — emulator validated, base_real built, dataset_v3 generated |
-| [AGENT_HANDOFF_FIELD_READINESS_PLAN.md](../10_PLANS_ACTIVE/AGENT_HANDOFF_FIELD_READINESS_PLAN.md) | **Field Readiness Handoff Plan** ► ACTIVE (Feb 12 implementation pass) |
-| [N_ELEMENT_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/N_ELEMENT_IMPLEMENTATION_PLAN.md) | n-Element Deep Sets Implementation (Phases 1-5) |
-| [SUMO_BASE_SCENARIO_PLAN.md](../10_PLANS_ACTIVE/SUMO_BASE_SCENARIO_PLAN.md) | SUMO Base Scenarios (Dataset v2) |
-| [DATALOGGER_ACCEL_UPDATE.md](../10_PLANS_ACTIVE/DATALOGGER_ACCEL_UPDATE.md) | DataLogger Accelerometer Update for Network Characterization |
-| [ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md](../10_PLANS_ACTIVE/ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md) | ESP-NOW Network Characterization Implementation Guide |
-| [ESPNOW_LONG_RANGE_MODE_MIGRATION.md](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) | ESP-NOW LR Mode Migration Plan (extends range) |
-| [hw_firmware_migration_plan.md](../10_PLANS_ACTIVE/hw_firmware_migration_plan.md) | Hardware Firmware Migration Plan |
-| [QUANTIZATION_DUAL_TRACK_PLAN.md](../10_PLANS_ACTIVE/QUANTIZATION_DUAL_TRACK_PLAN.md) | Quantization Dual-Track Plan (PTQ + QAT) |
-| [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Cloud Training Pipeline Proposal (Draft) |
-| [CLOUD_TRAINING_PIPELINE_VERDICT.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Cloud Training Pipeline Verdict (Approved with Conditions) |
-| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Cloud Training AWS Execution Plan ✅ RUN 001 COMPLETE, Run 002 READY |
-| [EC2_AMI_CREATION_PLAN.md](../10_PLANS_ACTIVE/EC2_AMI_CREATION_PLAN.md) | **EC2 AMI Creation Plan** ✅ COMPLETED (ami-03a3037588b0f34f2) |
-| [RUN_002_EVAL_GAP_REVIEW.md](../10_PLANS_ACTIVE/RUN_002_EVAL_GAP_REVIEW.md) | Run 002 Eval Gap Review (n=3,4,5 still needed) |
-| [RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md) | Run 003 findings + root-cause review (updated Mar 2, 2026) |
-| [RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md](../10_PLANS_ACTIVE/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md) | Run 003 follow-up session fixes (metrics + emulator fidelity) |
-| [RUN_006_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_006_FIX_PLAN.md) | **Run 006 fix plan:** 7 root causes, all Docker-validated (211 unit + 19 integration tests) |
-| [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | **Run 004 plan (v2.2):** H0-H4 complete, dry-run gate done (15/15 buckets non-empty) |
-| [THREE_VEHICLE_CHARACTERIZATION_PLAN.md](../10_PLANS_ACTIVE/THREE_VEHICLE_CHARACTERIZATION_PLAN.md) | Three Vehicle Characterization Plan |
+| Document | Status |
+|----------|--------|
+| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | Production path. H5 sim-to-real validation pending post-training |
+| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Active EC2 operations. Run 009 in progress |
+| [RUN_007_STRATEGIC_ANALYSIS.md](../10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md) | Reward ramp + stability strategy (applies to Run 007-009) |
+| [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | H0-H4 complete. H5 sim-to-real validation pending |
+| [QUANTIZATION_DUAL_TRACK_PLAN.md](../10_PLANS_ACTIVE/QUANTIZATION_DUAL_TRACK_PLAN.md) | FUTURE: TFLite INT8 for ESP32 (after successful training) |
 
 ### Agent Prompts
-| Document | Display Name |
-|----------|--------------|
-| [CONVOY_DATA_INTERPRETER.md](../AGENTS/CONVOY_DATA_INTERPRETER.md) | **Convoy Data Interpreter Agent** (Feb 24, 2026) |
-| [CONVOY_FIELD_VALIDATOR.md](../AGENTS/CONVOY_FIELD_VALIDATOR.md) | **Convoy Field Validator Agent** (Updated Feb 28: --forward-axis y) |
+| Document | Description |
+|----------|-------------|
+| [CONVOY_DATA_INTERPRETER.md](../AGENTS/CONVOY_DATA_INTERPRETER.md) | Convoy Data Interpreter Agent |
+| [CONVOY_FIELD_VALIDATOR.md](../AGENTS/CONVOY_FIELD_VALIDATOR.md) | Convoy Field Validator Agent (--forward-axis y) |
 | [BOOKKEEPER_PROMPT.md](../AGENT_PROMPTS/BOOKKEEPER_PROMPT.md) | Documentation Bookkeeper Agent |
 
-### RTT Implementation (Subdirectory)
-| Document | Display Name |
-|----------|--------------|
-| [RTT_FIRMWARE_IMPLEMENTATION_PROMPT.md](../10_PLANS_ACTIVE/RTT_Implementation/RTT_FIRMWARE_IMPLEMENTATION_PROMPT.md) | ESP-NOW RTT Characterization Firmware Implementation Guide |
-| [RTT_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/RTT_Implementation/RTT_PROGRESS_TRACKER.md) | RTT Firmware TDD Progress Tracker ✅ CHARACTERIZATION COMPLETE |
-| [RTT_TEST_SUITE_SUMMARY.md](../10_PLANS_ACTIVE/RTT_Implementation/RTT_TEST_SUITE_SUMMARY.md) | RTT Firmware TDD Test Suite Summary |
-
-### N-Element Implementation (Subdirectory) - CURRENT FOCUS
-| Document | Display Name |
-|----------|--------------|
-| [N_ELEMENT_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/N_Element_Implementation/N_ELEMENT_PROGRESS_TRACKER.md) | **N-Element Progress Tracker** ► Phase 4 COMPLETE |
-| [PHASE_1_SPEC.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_SPEC.md) | Phase 1: ConvoyEnv Dict Observation Space |
-| [PHASE_1_BUILDER_REPORT.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_BUILDER_REPORT.md) | Phase 1 Builder Report |
-| [PHASE_1_REVIEW.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_1_REVIEW.md) | Phase 1 Review - **APPROVED** |
-| [PHASE_2_SPEC.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_SPEC.md) | Phase 2: Deep Sets Policy Network |
-| [PHASE_2_BUILDER_REPORT.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_BUILDER_REPORT.md) | Phase 2 Builder Report |
-| [PHASE_2_REVIEW.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_2_REVIEW.md) | Phase 2 Review - **APPROVED** |
-| [PHASE_3_4_SPEC.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_SPEC.md) | Phase 3 & 4: Causality Fix & Training Pipeline |
-| [PHASE_3_4_BUILDER_REPORT.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_BUILDER_REPORT.md) | Phase 3 & 4 Builder Report |
-| [PHASE_3_4_REVIEW.md](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) | Phase 3 & 4 Review - **APPROVED** |
-
-### ConvoyEnv Implementation (Subdirectory)
-| Document | Display Name |
-|----------|--------------|
-| [CONVOY_ENV_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_IMPLEMENTATION_PLAN.md) | ConvoyEnv Gymnasium Implementation Plan |
-| [CONVOY_ENV_PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md) | ConvoyEnv Progress Tracker (Phase 7 Complete) |
-
-### Cloud Training Automation (Subdirectory)
-| Document | Display Name |
-|----------|--------------|
-| [IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AUTOMATION/IMPLEMENTATION_PLAN.md) | Cloud Training Automation Implementation Plan |
-| [PROGRESS_TRACKER.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AUTOMATION/PROGRESS_TRACKER.md) | Cloud Training Automation Progress Tracker |
-
 ---
 
-## 20_KNOWLEDGE_BASE (15 files)
+## 20_KNOWLEDGE_BASE (16 files)
 
-How-to guides, troubleshooting, workflows, and reusable reference notes.
+How-to guides, troubleshooting, and reusable reference notes.
 
-NOTE: SUMO FILES HAVE BEEN MOVED TO A SEPARATE FOLDER.
-
-| Document | Display Name |
-|----------|--------------|
-| [CLOUD_TRAINING_RUN_002_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_002_RESULTS.md) | **Cloud Training Run 002 Results** ► 40-episode eval + per-n evidence (Feb 21, 2026) |
-| [CLOUD_TRAINING_RUN_001_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) | **Cloud Training Run 001 Results** ► 80% SUCCESS (Jan 16, 2026) |
+| Document | Description |
+|----------|-------------|
+| [CLOUD_TRAINING_RUN_002_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_002_RESULTS.md) | Run 002 Results: 40-episode eval + per-n metrics |
+| [CLOUD_TRAINING_RUN_001_RESULTS.md](../20_KNOWLEDGE_BASE/CLOUD_TRAINING_RUN_001_RESULTS.md) | Run 001 Results: 80% success |
 | [AI_AGENT_CHECKLIST.md](../20_KNOWLEDGE_BASE/AI_AGENT_CHECKLIST.md) | AI Agent Pre-Implementation Checklist |
 | [DATALOGGER_MODIFICATION_PROMPT.md](../20_KNOWLEDGE_BASE/DATALOGGER_MODIFICATION_PROMPT.md) | DataLogger Modification Prompt |
-| [DATALOGGER_VALIDATION_TEST.md](../20_KNOWLEDGE_BASE/DATALOGGER_VALIDATION_TEST.md) | DataLogger Validation Test Guide (At Home) |
-| [DATA_RECORDING_STRATEGY.md](../20_KNOWLEDGE_BASE/DATA_RECORDING_STRATEGY.md) | **Recording Strategy + Axis Mapping** (Updated Feb 28: --forward-axis y critical) |
-| [HARDWARE_PROGRESS.md](../20_KNOWLEDGE_BASE/HARDWARE_PROGRESS.md) | Hardware Development Progress (Updated Feb 28: Recording #2 GO) |
-| [LINUX_PIP_LARGE_PACKAGES.md](../20_KNOWLEDGE_BASE/LINUX_PIP_LARGE_PACKAGES.md) | **Installing Large Python Packages (PyTorch) on Linux** |
+| [DATALOGGER_VALIDATION_TEST.md](../20_KNOWLEDGE_BASE/DATALOGGER_VALIDATION_TEST.md) | DataLogger Validation Test Guide |
+| [DATA_RECORDING_STRATEGY.md](../20_KNOWLEDGE_BASE/DATA_RECORDING_STRATEGY.md) | Recording Strategy + Axis Mapping (--forward-axis y) |
+| [HARDWARE_PROGRESS.md](../20_KNOWLEDGE_BASE/HARDWARE_PROGRESS.md) | Hardware Development Progress |
+| [LINUX_PIP_LARGE_PACKAGES.md](../20_KNOWLEDGE_BASE/LINUX_PIP_LARGE_PACKAGES.md) | Installing Large Python Packages on Linux |
 | [ML_AUGMENTATION_PIPELINE.md](../20_KNOWLEDGE_BASE/ML_AUGMENTATION_PIPELINE.md) | ML Data Augmentation Pipeline (SUMO-Only) |
-| [ML_DOCKER_ENVIRONMENT.md](../20_KNOWLEDGE_BASE/ML_DOCKER_ENVIRONMENT.md) | **ML Docker Environment Guide** (NEW - cross-platform setup) |
+| [ML_DOCKER_ENVIRONMENT.md](../20_KNOWLEDGE_BASE/ML_DOCKER_ENVIRONMENT.md) | ML Docker Environment Guide |
+| [TEAM_CLOUD_TRAINING_ONBOARDING.md](../20_KNOWLEDGE_BASE/TEAM_CLOUD_TRAINING_ONBOARDING.md) | Shared AMI + branch-isolated teammate onboarding runbook |
 | [NETWORK_CHARACTERIZATION_GUIDE.md](../20_KNOWLEDGE_BASE/NETWORK_CHARACTERIZATION_GUIDE.md) | ESP-NOW Network Characterization Guide |
 | [PLATFORMIO_TESTING_README.md](../20_KNOWLEDGE_BASE/PLATFORMIO_TESTING_README.md) | PlatformIO Unit Testing with Unity |
-| [SUMO_EX3_README.md](../20_KNOWLEDGE_BASE/SUMO_EX3_README.md) | SUMO Exercise 3 README |
-| [SUMO_EX4_README.md](../20_KNOWLEDGE_BASE/SUMO_EX4_README.md) | SUMO Exercise 4 README |
-| [SUMO_EXERCISE_FINDINGS.md](../20_KNOWLEDGE_BASE/SUMO_EXERCISE_FINDINGS.md) | SUMO Exercise Findings |
-| [SUMO_RESEARCH_AND_SETUP_GUIDE.md](../20_KNOWLEDGE_BASE/SUMO_RESEARCH_AND_SETUP_GUIDE.md) | SUMO Research and Setup Guide |
 
-SUMO FILES HAVE BEEN MOVED TO A SEPARATE FOLDER.
+### SUMO Guides (subfolder)
+| Document | Description |
+|----------|-------------|
+| [SUMO_RESEARCH_AND_SETUP_GUIDE.md](../20_KNOWLEDGE_BASE/SUMO/SUMO_RESEARCH_AND_SETUP_GUIDE.md) | SUMO Research and Setup Guide |
+| [SUMO_EXERCISE_FINDINGS.md](../20_KNOWLEDGE_BASE/SUMO/SUMO_EXERCISE_FINDINGS.md) | SUMO Exercise Findings |
+| [SUMO_EX3_README.md](../20_KNOWLEDGE_BASE/SUMO/SUMO_EX3_README.md) | SUMO Exercise 3 |
+| [SUMO_EX4_README.md](../20_KNOWLEDGE_BASE/SUMO/SUMO_EX4_README.md) | SUMO Exercise 4 |
 
 ---
 
-## 90_ARCHIVE (22 files)
+## 90_ARCHIVE (60+ files)
 
-Implemented/completed plans, approved code reviews, and historical documents.
+Completed plans, approved reviews, and historical documents.
 
-### Emulator Implementation Plans (Complete)
+### Architecture Correction (Complete Feb 26-28, 2026)
+| Document | Description |
+|----------|-------------|
+| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md](../90_ARCHIVE/Architecture_Correction/MESH_AND_ACTION_ARCHITECTURE_CORRECTION.md) | Master plan: Phases A-G |
+| [MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md](../90_ARCHIVE/Architecture_Correction/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md) | Progress tracker |
 
-| Document | Display Name |
-|----------|--------------|
-| [EMULATOR_PHASE2_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/EMULATOR_PHASE2_IMPLEMENTATION_PLAN.md) | Phase 2: Parameter Loading |
-| [EMULATOR_PHASE3_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/EMULATOR_PHASE3_IMPLEMENTATION_PLAN.md) | Phase 3: Latency Modeling |
-| [EMULATOR_PHASE4_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/EMULATOR_PHASE4_IMPLEMENTATION_PLAN.md) | Phase 4: Packet Loss Modeling |
-| [EMULATOR_PHASE5_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/EMULATOR_PHASE5_IMPLEMENTATION_PLAN.md) | Phase 5: Sensor Noise |
-| [EMULATOR_PHASE6_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/EMULATOR_PHASE6_IMPLEMENTATION_PLAN.md) | Phase 6: Core Transmission & Observation Logic |
-| [PHASE8_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/PHASE8_IMPLEMENTATION_PLAN.md) | Phase 8: Domain Randomization & Lifecycle Management |
-| [PHASE9_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/PHASE9_IMPLEMENTATION_PLAN.md) | Phase 9: Integration & Sim2Real Validation |
-| [PHASE10_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Emulator/PHASE10_IMPLEMENTATION_PLAN.md) | Phase 10: Documentation & Final Polish |
+### Training Runs (Runs 002-007, all concluded)
+| Document | Description |
+|----------|-------------|
+| [RUN_002_EVAL_GAP_REVIEW.md](../90_ARCHIVE/Training_Runs/RUN_002_EVAL_GAP_REVIEW.md) | Run 002 eval gap (n=3,4,5 needed) |
+| [RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md](../90_ARCHIVE/Training_Runs/RUN_003_FINDINGS_FOR_ARCHITECT_REVIEW.md) | Run 003 root-cause analysis |
+| [RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md](../90_ARCHIVE/Training_Runs/RUN_003_SESSION_FIXES_FOR_ARCHITECT_REVIEW.md) | Run 003 follow-up fixes |
+| [RUN_005_006_POST_MORTEM.md](../90_ARCHIVE/Training_Runs/RUN_005_006_POST_MORTEM.md) | Run 005/006 post-mortem |
+| [RUN_006_FIX_PLAN.md](../90_ARCHIVE/Training_Runs/RUN_006_FIX_PLAN.md) | Run 006: 7 root causes fixed (canonical) |
+| [RUN_007_PRE_IMPLEMENTATION_ANALYSIS.md](../90_ARCHIVE/Training_Runs/RUN_007_PRE_IMPLEMENTATION_ANALYSIS.md) | Run 007 pre-implementation analysis |
 
-### Approved Code Reviews
+### N-Element Implementation (Complete Jan 2026)
+| Document | Description |
+|----------|-------------|
+| [N_ELEMENT_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/N_Element_Implementation/N_ELEMENT_IMPLEMENTATION_PLAN.md) | Master plan |
+| [N_ELEMENT_PROGRESS_TRACKER.md](../90_ARCHIVE/N_Element_Implementation/N_ELEMENT_PROGRESS_TRACKER.md) | Progress tracker |
+| [PHASE_1_SPEC.md](../90_ARCHIVE/N_Element_Implementation/PHASE_1_SPEC.md) | Phase 1: Dict Obs Space |
+| [PHASE_2_SPEC.md](../90_ARCHIVE/N_Element_Implementation/PHASE_2_SPEC.md) | Phase 2: Deep Sets Policy |
+| [PHASE_3_4_SPEC.md](../90_ARCHIVE/N_Element_Implementation/PHASE_3_4_SPEC.md) | Phase 3-4: Causality + Training |
+| [PHASE_5_1_LR_MODE_SPEC.md](../90_ARCHIVE/N_Element_Implementation/PHASE_5_1_LR_MODE_SPEC.md) | Phase 5.1: LR Mode (future) |
+| + 6 builder reports and reviews | APPROVED |
 
-| Document | Display Name |
-|----------|--------------|
-| [PHASE3_CODE_REVIEW.md](../90_ARCHIVE/Emulator/PHASE3_CODE_REVIEW.md) | Phase 3 Code Review - APPROVED |
-| [PHASE4_CODE_REVIEW.md](../90_ARCHIVE/Emulator/PHASE4_CODE_REVIEW.md) | Phase 4 Code Review - APPROVED (Production Ready) |
-| [PHASE5_CODE_REVIEW.md](../90_ARCHIVE/Emulator/PHASE5_CODE_REVIEW.md) | Phase 5 Code Review - APPROVED |
-| [PHASE5_CODE_REVIEW_FIXES_SUMMARY.md](../90_ARCHIVE/Emulator/PHASE5_CODE_REVIEW_FIXES_SUMMARY.md) | Phase 5 Fixes Summary |
-| [PHASE6_CODE_REVIEW.md](../90_ARCHIVE/Emulator/PHASE6_CODE_REVIEW.md) | Phase 6 Code Review - APPROVED |
-| [PHASE6_CODE_REVIEW_FIXES_SUMMARY.md](../90_ARCHIVE/Emulator/PHASE6_CODE_REVIEW_FIXES_SUMMARY.md) | Phase 6 Fixes Summary |
-| [PHASE8_CODE_REVIEW.md](../90_ARCHIVE/Emulator/PHASE8_CODE_REVIEW.md) | Phase 8 Code Review - CONDITIONALLY APPROVED |
-| [PHASE8_FIXES_SUMMARY.md](../90_ARCHIVE/Emulator/PHASE8_FIXES_SUMMARY.md) | Phase 8 Fixes Summary |
-| [PHASE9_CODE_REVIEW.md](../90_ARCHIVE/Emulator/PHASE9_CODE_REVIEW.md) | Phase 9 Code Review - APPROVED |
+### ConvoyEnv Implementation (Complete Jan 2026)
+| Document | Description |
+|----------|-------------|
+| [CONVOY_ENV_IMPLEMENTATION_PLAN.md](../90_ARCHIVE/ConvoyEnv/CONVOY_ENV_IMPLEMENTATION_PLAN.md) | Master plan |
+| [CONVOY_ENV_PROGRESS_TRACKER.md](../90_ARCHIVE/ConvoyEnv/CONVOY_ENV_PROGRESS_TRACKER.md) | Phase 7 complete |
+| [PHASE_5_SPEC.md](../90_ARCHIVE/ConvoyEnv/PHASE_5_SPEC.md) | Phase 5 spec |
+| [PHASE_6_SPEC.md](../90_ARCHIVE/ConvoyEnv/PHASE_6_SPEC.md) | Phase 6 spec |
+| [PHASE_7_SPEC.md](../90_ARCHIVE/ConvoyEnv/PHASE_7_SPEC.md) | Phase 7 spec |
 
-### ConvoyEnv Implementation (Complete Phases)
+### Cloud Training Automation (Complete Jan 2026)
+| Document | Description |
+|----------|-------------|
+| [CLOUD_TRAINING_PIPELINE_PROPOSAL.md](../90_ARCHIVE/Cloud_Training/CLOUD_TRAINING_PIPELINE_PROPOSAL.md) | Original proposal |
+| [CLOUD_TRAINING_PIPELINE_VERDICT.md](../90_ARCHIVE/Cloud_Training/CLOUD_TRAINING_PIPELINE_VERDICT.md) | Approved with conditions |
+| [IMPLEMENTATION_PLAN.md](../90_ARCHIVE/Cloud_Training/IMPLEMENTATION_PLAN.md) | Implementation plan |
+| [PROGRESS_TRACKER.md](../90_ARCHIVE/Cloud_Training/PROGRESS_TRACKER.md) | All phases complete |
+| + 5 phase specs and reviews | Phases 1-3 APPROVED |
 
-| Document | Display Name |
-|----------|--------------|
-| [PHASE_7_SPEC.md](../90_ARCHIVE/ConvoyEnv/PHASE_7_SPEC.md) | Phase 7: Integration & Gymnasium Registration |
+### RTT Implementation (Complete Jan 2026)
+| Document | Description |
+|----------|-------------|
+| [RTT_FIRMWARE_IMPLEMENTATION_PROMPT.md](../90_ARCHIVE/RTT_Implementation/RTT_FIRMWARE_IMPLEMENTATION_PROMPT.md) | Firmware implementation guide |
+| [RTT_PROGRESS_TRACKER.md](../90_ARCHIVE/RTT_Implementation/RTT_PROGRESS_TRACKER.md) | Characterization COMPLETE |
+| [RTT_TEST_SUITE_SUMMARY.md](../90_ARCHIVE/RTT_Implementation/RTT_TEST_SUITE_SUMMARY.md) | Test suite summary |
+| [RTT_ARCH_REVIEW_CRITIC.md](../90_ARCHIVE/RTT_Implementation/RTT_ARCH_REVIEW_CRITIC.md) | Architecture review |
 
-### Progress Trackers (Complete)
+### Hardware & Firmware (Complete)
+| Document | Description |
+|----------|-------------|
+| [hw_firmware_migration_plan.md](../90_ARCHIVE/Hardware_Firmware/hw_firmware_migration_plan.md) | Firmware migration plan |
+| [ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md](../90_ARCHIVE/Hardware_Firmware/ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md) | ESP-NOW characterization |
+| [ESPNOW_LONG_RANGE_MODE_MIGRATION.md](../90_ARCHIVE/Hardware_Firmware/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) | LR mode migration (future) |
+| [DATALOGGER_ACCEL_UPDATE.md](../90_ARCHIVE/Hardware_Firmware/DATALOGGER_ACCEL_UPDATE.md) | Accel logging update |
 
-| Document | Display Name |
-|----------|--------------|
-| [ESPNOW_EMULATOR_PROGRESS.md](../90_ARCHIVE/Emulator/ESPNOW_EMULATOR_PROGRESS.md) | ESP-NOW Emulator Progress - ALL PHASES COMPLETE |
-| [TDD_PROGRESS_TRACKER.md](../90_ARCHIVE/TDD_Implementation/TDD_PROGRESS_TRACKER.md) | RTT Firmware TDD Progress - GREEN PHASE COMPLETE |
-| [TDD_TEST_SUITE_SUMMARY.md](../90_ARCHIVE/TDD_Implementation/TDD_TEST_SUITE_SUMMARY.md) | RTT Firmware TDD Test Suite Summary |
+### Phase 6 Prep (Complete Mar 2026)
+| Document | Description |
+|----------|-------------|
+| [PHASE_6_PREP_WORK_PLAN.md](../90_ARCHIVE/Phase6_Prep/PHASE_6_PREP_WORK_PLAN.md) | Emulator + dataset_v3 |
+| [AGENT_HANDOFF_FIELD_READINESS_PLAN.md](../90_ARCHIVE/Phase6_Prep/AGENT_HANDOFF_FIELD_READINESS_PLAN.md) | Field readiness checklist |
+| [EC2_AMI_CREATION_PLAN.md](../90_ARCHIVE/Phase6_Prep/EC2_AMI_CREATION_PLAN.md) | AMI creation (ami-03a3037588b0f34f2) |
+| [SUMO_BASE_SCENARIO_PLAN.md](../90_ARCHIVE/Phase6_Prep/SUMO_BASE_SCENARIO_PLAN.md) | Base scenario plan |
+| [THREE_VEHICLE_CHARACTERIZATION_PLAN.md](../90_ARCHIVE/Phase6_Prep/THREE_VEHICLE_CHARACTERIZATION_PLAN.md) | 3-vehicle characterization |
+| [SCENARIO_BUILDING.txt](../90_ARCHIVE/Phase6_Prep/SCENARIO_BUILDING.txt) | Scenario generation spec |
 
-### Archived Duplicates
+### Emulator (Complete Dec 2025 - Jan 2026)
+- 8 implementation plans (Phases 2-10)
+- 9 code reviews (all APPROVED)
+- 1 progress tracker (84/84 tests)
 
-| Document | Display Name |
-|----------|--------------|
-| [ESPNOW_EMULATOR_DESIGN_TDD_copy.md](../90_ARCHIVE/Duplicates/ESPNOW_EMULATOR_DESIGN_TDD_copy.md) | ESP-NOW Emulator Design (TDD Copy) |
-| [ESPNOW_CHARACTERIZATION_IMPLEMENTATION_TDD_copy.md](../90_ARCHIVE/Duplicates/ESPNOW_CHARACTERIZATION_IMPLEMENTATION_TDD_copy.md) | ESP-NOW Characterization Implementation (TDD Copy) |
+### Other
+| [Duplicates/](../90_ARCHIVE/Duplicates/) | Archived duplicate files |
 
 ---
 
 ## Quick Links by Topic
 
-### CURRENT PRIORITIES (In Order)
-1. ~~Re-calibrate emulator~~ ✅ Validated (Mar 1, 2026)
-2. ~~Process convoy → base_real/~~ ✅ Built (Mar 1, 2026)
-3. ~~Generate dataset_v3~~ ✅ Generated (25 train + 10 eval, n=1-5 exact) (Mar 1, 2026)
-4. ~~Run 003: Train~~ ✅ Completed, policy failed, 6 bugs fixed
-5. ~~Phase H pre-training~~ ✅ H0-H4 complete + dry-run gate done (194 tests)
-6. ~~Run 004~~ ✅ First success (+352, 81% success). 19% spawn collisions, 0% V2V reaction
-7. ~~Run 005~~ ❌ Regressed (+175, 26.4% collisions). Unit tests ≠ real physics
-8. ~~Run 006 pre-training~~ ✅ 7 root causes fixed, Docker-validated (211+19 tests)
-9. **Run 006: Push → EC2 training** ► NEXT
-10. **H5: Sim-to-real validation** (post-training, pre-deployment)
-11. **Quantization** - TFLite INT8 for ESP32 deployment
-
-### RECENTLY COMPLETED
-- ✅ **Phase 6 Prep Work (Steps 1-3) — COMPLETE** - Mar 1, 2026. Emulator params validated, convoy→SUMO base_real built (6 vehicles), dataset_v3 generated (25 train + 10 eval, exact n=1-5 coverage). Smoke train passed. [Plan](../10_PLANS_ACTIVE/PHASE_6_PREP_WORK_PLAN.md)
-- ✅ **Recording #2 + Extra Driving — GO** - Feb 28, 2026. Hard brake -8.63 m/s² (0.88g), mesh relay confirmed, ~13 min combined data. Axis mapping discovered (Y=forward). [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
-- ✅ **Architecture Correction Phases A-G** - Feb 26-28, 2026. Cone filter, continuous action space, mesh relay in emulator/ConvoyEnv/firmware, recording strategy, data collection. [Progress](../10_PLANS_ACTIVE/MESH_AND_ACTION_ARCHITECTURE_CORRECTION_PROGRESS.md)
-- ✅ **Convoy Recording #1 + Emulator Calibration** - Feb 21-24, 2026. Emulator calibrated from healthy links + cruising sensor noise.
-- ✅ **Run 002 Evaluation** - Feb 21, 2026. 100% success (40ep) BUT baseline only (no mesh/cone/continuous).
-- ✅ **Phase 3 & 4: Causality Fix + Training Pipeline** - [Review](../10_PLANS_ACTIVE/N_Element_Implementation/PHASE_3_4_REVIEW.md) APPROVED (Jan 15, 2026)
+### CURRENT PRIORITIES
+1. **Monitor Run 009** on EC2 (check at 500K, 2M, 5M, 10M steps)
+2. **H5: Sim-to-real validation** (post-training, pre-deployment)
+3. **Quantization** - TFLite INT8 for ESP32
+4. **Deploy on ESP32** + Professor PoC demo
 
 ### ESP-NOW Emulator
 - [Design](../00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md)
-- [Progress](../90_ARCHIVE/Emulator/ESPNOW_EMULATOR_PROGRESS.md) ✅ COMPLETE (84/84 tests)
-- [Active Params](../../roadsense-v2v/ml/espnow_emulator/emulator_params_measured.json) (convoy-calibrated, Feb 24 — pending re-calibration from Recording #2)
-- [Recording #2 Extracted Params](../../roadsense-v2v/ml/data/convoy_analysis_site/convoy_emulator_params.json) (Feb 28)
-- [Extra Drive Extracted Params](../../roadsense-v2v/ml/data/convoy_analysis_extra/convoy_emulator_params.json) (Feb 28)
-- [Convoy Calibration Source](../../roadsense-v2v/ml/espnow_emulator/emulator_params_convoy.json)
-- [RTT Backup](../../roadsense-v2v/ml/espnow_emulator/emulator_params_measured_rtt_backup.json) (pre-convoy)
-- [Original 5m Test](../../roadsense-v2v/ml/espnow_emulator/emulator_params_5m.json)
+- [Progress](../90_ARCHIVE/Emulator/ESPNOW_EMULATOR_PROGRESS.md) - ALL PHASES COMPLETE
+- [Active Params](../../roadsense-v2v/ml/espnow_emulator/emulator_params_measured.json) (convoy-calibrated)
 
-### Network Characterization
-- [Implementation Plan](../10_PLANS_ACTIVE/ESPNOW_CHARACTERIZATION_IMPLEMENTATION.md)
-- [Field Guide](../20_KNOWLEDGE_BASE/NETWORK_CHARACTERIZATION_GUIDE.md)
-- [RTT Progress](../10_PLANS_ACTIVE/RTT_Implementation/RTT_PROGRESS_TRACKER.md) ✅ COMPLETE
-- [LR Mode Migration](../10_PLANS_ACTIVE/ESPNOW_LONG_RANGE_MODE_MIGRATION.md) (PLANNED)
-
-### SUMO Simulation & RL Training
-- [Setup Guide](../20_KNOWLEDGE_BASE/SUMO_RESEARCH_AND_SETUP_GUIDE.md)
-- [Docker Environment](../20_KNOWLEDGE_BASE/ML_DOCKER_ENVIRONMENT.md) ► NEW (cross-platform)
-- [Exercise Findings](../20_KNOWLEDGE_BASE/SUMO_EXERCISE_FINDINGS.md)
-- [ML Pipeline](../20_KNOWLEDGE_BASE/ML_AUGMENTATION_PIPELINE.md)
-- [ConvoyEnv Implementation Plan](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_IMPLEMENTATION_PLAN.md) ► CURRENT
-- [ConvoyEnv Progress](../10_PLANS_ACTIVE/ConvoyEnv_Implementation/CONVOY_ENV_PROGRESS_TRACKER.md) ► Phase 7 Complete
-
-### Hardware Development
-- [Progress Tracking](../20_KNOWLEDGE_BASE/HARDWARE_PROGRESS.md)
-- [Migration Plan](../10_PLANS_ACTIVE/hw_firmware_migration_plan.md)
+### Hardware
+- [Progress](../20_KNOWLEDGE_BASE/HARDWARE_PROGRESS.md)
 - [Testing Guide](../20_KNOWLEDGE_BASE/PLATFORMIO_TESTING_README.md)
 
 ---
 
-**Document Version:** 1.1
+**Document Version:** 2.0

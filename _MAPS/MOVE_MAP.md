@@ -115,3 +115,38 @@ Files that may have internal links to other documents that changed location:
 
 **Document Version:** 1.0
 **Classification Date:** January 1, 2026
+
+---
+
+## March 7, 2026 — Bulk Archive (45 files)
+
+All completed plans moved from `10_PLANS_ACTIVE/` to `90_ARCHIVE/`.
+`10_PLANS_ACTIVE/` reduced from 51 files to 5 active plans.
+
+### New Archive Subdirectories Created
+
+| Subdirectory | Files | Content |
+|---|---|---|
+| `Architecture_Correction/` | 2 | Mesh + Action correction (Phases A-G, complete Feb 28) |
+| `Training_Runs/` | 6 | Run 002-007 post-mortems and fix plans |
+| `N_Element_Implementation/` | 11 | Deep Sets implementation (all phases, complete Jan 2026) |
+| `Cloud_Training/` | 9 | Pipeline proposal, verdict, automation phases 1-3 |
+| `RTT_Implementation/` | 4 | RTT firmware, progress, tests, arch review |
+| `Hardware_Firmware/` | 4 | ESP-NOW characterization, datalogger, firmware migration, LR mode |
+| `Phase6_Prep/` | 6 | Prep work, field readiness, AMI, scenarios, characterization |
+
+### Existing Archive Additions
+
+| Subdirectory | Files Added | Content |
+|---|---|---|
+| `ConvoyEnv/` | 4 | Implementation plan, progress tracker, Phase 5-6 specs |
+
+### Files Kept in 10_PLANS_ACTIVE (5)
+
+| File | Reason |
+|---|---|
+| PHASE_6_REAL_DATA_PIPELINE.md | Production path, H5 sim-to-real pending |
+| CLOUD_TRAINING_AWS_EXECUTION_PLAN.md | Active EC2 operations, Run 009 in progress |
+| RUN_007_STRATEGIC_ANALYSIS.md | Active reward/stability strategy for Run 009 |
+| RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md | H5 validation pending |
+| QUANTIZATION_DUAL_TRACK_PLAN.md | Next phase after successful training |
