@@ -93,19 +93,36 @@ xhost +local:docker
 
 ### Linux + Wayland (Fedora, etc.)
 
-**Known Issue:** SUMO-GUI does not work from Docker on Wayland.
+The default `./run_docker.sh demo` path is not sufficient on Fedora Wayland. Use the manual Docker command below instead.
 
-Error: `FXApp::openDisplay: unable to open display :0`
+```bash
+SCENARIO_DIR=/absolute/path/to/scenario_dir
+XAUTH_FILE="${XAUTHORITY:-$(find /run/user/$(id -u) -maxdepth 1 -name '.mutter-Xwaylandauth.*' | head -n1)}"
+test -n "$XAUTH_FILE" || { echo "No Xwayland auth file found"; exit 1; }
 
-Attempted fixes (none worked):
-- `xhost +local:docker` / `xhost +local:` / `xhost +`
-- Passing XAUTHORITY
-- `--network=host`
+xhost +local:
+docker run --rm -it \
+  --security-opt label=disable \
+  --user "$(id -u):$(id -g)" \
+  -e DISPLAY="$DISPLAY" \
+  -e QT_X11_NO_MITSHM=1 \
+  -e XAUTHORITY=/tmp/.Xauthority \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v "$XAUTH_FILE:/tmp/.Xauthority:ro" \
+  -v "$SCENARIO_DIR:/data:Z" \
+  -w /data \
+  ghcr.io/eclipse-sumo/sumo:main \
+  sumo-gui -c scenario.sumocfg
+xhost -local:
+```
 
-**Workaround Options:**
-1. Use headless mode for training (works fine)
-2. Run visualization on Windows WSL2 instead
-3. Future: Add VNC server inside container
+If you see `Could not build output file 'fcd_output.csv' Permission denied`, remove stale root-owned outputs once:
+
+```bash
+rm -f "$SCENARIO_DIR/fcd_output.csv" "$SCENARIO_DIR/ssm_output.xml"
+```
+
+`./run_docker.sh demo` still uses the older Wayland path, so do not rely on it for Fedora until that script is updated.
 
 ### macOS
 
@@ -176,7 +193,7 @@ The Dockerfile uses a Python virtual environment to avoid conflicts with system 
 
 ### GUI shows "unable to open display"
 
-See platform-specific instructions above. On Wayland (Fedora), GUI doesn't work - use headless mode or Windows WSL2.
+See platform-specific instructions above. On Fedora Wayland, use the manual Docker command with `XAUTHORITY`, `--security-opt label=disable`, and `--user "$(id -u):$(id -g)"`.
 
 ### Tests fail with "SUMO not installed"
 

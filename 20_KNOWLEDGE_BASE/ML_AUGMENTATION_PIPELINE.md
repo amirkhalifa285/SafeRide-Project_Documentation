@@ -34,10 +34,13 @@ We use the official **SUMO v1.25.0+** image.
 # Pull Image (GitHub Registry)
 docker pull ghcr.io/eclipse-sumo/sumo:main
 
-# Run GUI (WSLg/Linux)
+# Run GUI (X11/WSLg)
 docker run --rm -v $(pwd):/data:Z -w /data -e DISPLAY=$DISPLAY \
   -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
   ghcr.io/eclipse-sumo/sumo:main sumo-gui -c scenario.sumocfg
+
+# Fedora Wayland needs the manual XAUTHORITY + SELinux-safe command in:
+# docs/20_KNOWLEDGE_BASE/SUMO/SUMO_RESEARCH_AND_SETUP_GUIDE.md
 ```
 
 ### 2. Python Dependencies

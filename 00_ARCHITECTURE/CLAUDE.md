@@ -134,7 +134,7 @@ docker pull ghcr.io/eclipse-sumo/sumo:main
 # Run Headless
 docker run --rm -v $(pwd):/data:Z -w /data ghcr.io/eclipse-sumo/sumo:main sumo -c scenario.sumocfg
 
-# Run GUI (Linux/WSLg)
+# Run GUI (X11/WSLg)
 docker run --rm \
   -e DISPLAY=$DISPLAY \
   -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
@@ -142,8 +142,10 @@ docker run --rm \
   -w /data \
   ghcr.io/eclipse-sumo/sumo:main \
   sumo-gui -c scenario.sumocfg
+
+# Fedora Wayland needs the manual XAUTHORITY + SELinux-safe command in:
+# docs/20_KNOWLEDGE_BASE/SUMO/SUMO_RESEARCH_AND_SETUP_GUIDE.md
 ```
 
 ### Documentation Maintenance
 Update docs after each session using the docs/AGENT_PROMPTS/BOOKKEPEER_PROMPT
-

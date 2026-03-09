@@ -501,30 +501,37 @@ docker run --rm ghcr.io/eclipse-sumo/sumo:main sumo --version
 
 ### Fedora Wayland + Docker + GUI (SELinux Enforcing)
 
-For Fedora + Wayland (XWayland) the GUI may fail unless X access and SELinux labels are handled:
+For Fedora + Wayland (XWayland), the simple `-e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:rw` command is not enough. The working launch path also needs the XWayland auth file, SELinux label disable, and a non-root container user.
 
 ```bash
-# Allow local X access
-xhost +local:
+# Set this to the scenario directory you want to open
+SCENARIO_DIR=/absolute/path/to/scenario_dir
+XAUTH_FILE="${XAUTHORITY:-$(find /run/user/$(id -u) -maxdepth 1 -name '.mutter-Xwaylandauth.*' | head -n1)}"
+test -n "$XAUTH_FILE" || { echo "No Xwayland auth file found"; exit 1; }
 
-# From scenario directory
-docker run --rm \
+# If you previously launched without --user and see "Permission denied" for
+# fcd_output.csv or ssm_output.xml, delete those stale root-owned files once:
+# rm -f "$SCENARIO_DIR/fcd_output.csv" "$SCENARIO_DIR/ssm_output.xml"
+
+xhost +local:
+docker run --rm -it \
   --security-opt label=disable \
-  -e DISPLAY=$DISPLAY \
+  --user "$(id -u):$(id -g)" \
+  -e DISPLAY="$DISPLAY" \
   -e QT_X11_NO_MITSHM=1 \
   -e XAUTHORITY=/tmp/.Xauthority \
   -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-  -v /run/user/1000/.mutter-Xwaylandauth.*:/tmp/.Xauthority:ro \
-  -v $(pwd):/data:Z \
+  -v "$XAUTH_FILE:/tmp/.Xauthority:ro" \
+  -v "$SCENARIO_DIR:/data:Z" \
   -w /data \
   ghcr.io/eclipse-sumo/sumo:main \
   sumo-gui -c scenario.sumocfg
-
-# Revoke access after
 xhost -local:
 ```
 
-**Note:** `xhost +local:` was required to resolve `FXApp::openDisplay: unable to open display :0` in Docker.
+**Tested Result:** This command resolved `FXApp::openDisplay: unable to open display :0` on Fedora Wayland in Amir's workspace on March 9, 2026.
+
+**Important:** `--user "$(id -u):$(id -g)"` prevents SUMO from creating root-owned output files on the host mount. Without it, later GUI launches can fail with `Could not build output file 'fcd_output.csv' Permission denied`.
 
 ---
 

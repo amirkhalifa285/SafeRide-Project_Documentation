@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 7, 2026 (Run 008 root cause updated — 3rd cause: entropy-driven std drift; Run 009 relaunching on EC2)
+**Last Updated:** March 8, 2026 (Run 010 completed — FIRST V2V REACTION: 87%)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Phase 6.14 — Run 009 Training (Active V2V + Stability Fixes)
+## CURRENT PHASE: Post-Run 010 — Fix Eval Scenarios, Then Validate + Deploy
 
 ```
 ================================================================================
@@ -23,99 +23,75 @@
   ✅ Phase F: Recording Strategy Update (mesh-aware ego-only protocol)
   ✅ Phase G: Real Data Collection (Recording #2 + extra driving, GO verdict)
 
-  RUN 003 — COMPLETED, POLICY FAILED + POST-MORTEM DONE (March 2, 2026)
-  ✅ Run 003: 10M steps, avg_reward=-6511, 6 root causes fixed (169 tests)
+  TRAINING RUNS 003-008 — ALL FAILED (see history table below)
 
-  RUN 004 — COMPLETED, FIRST SUCCESSFUL MODEL (March 3, 2026)
-  ✅ Run 004: 10M steps, avg_reward=+352, 81% behavioral success
-  ⚠️ 19% collision rate (ALL 38 spawn-time, steps 3-32 — not model intelligence)
-  ⚠️ 0% V2V hazard reaction (model is passive, lets CF model handle it)
-  ⚠️ Eval matrix NOT used (cloud script was missing flags)
+  RUN 009 — COMPLETED, PARTIAL SUCCESS (March 7, 2026)
+  ✅ avg_reward=-3460, collision_rate=0%, behavioral_success=72%
+  ✅ Perfect PPO stability: std 0.615→0.118 monotonic, explained_variance=0.97
+  ❌ V2V reaction: 0% — model converged to passive "do nothing" optimum
+  ❌ Root cause: SUMO CF model brakes for free during hazards. RL braking costs
+     comfort penalty but gives same reward. Model rationally lets CF handle it.
 
-  RUN 005 — COMPLETED, REGRESSED FROM RUN 004 (March 4-5, 2026)
-  ❌ Run 005: avg_reward=+175 (vs +352 in Run 004 — WORSE)
-  ❌ Root cause: 5 fixes were unit-tested but never Docker-validated with real SUMO
+  RUN 010 — COMPLETED, FIRST V2V REACTION (March 8, 2026)
+  ✅ avg_reward=-3119, collision_rate=0%, behavioral_success=73.6%
+  ✅ V2V REACTION: 87% (40/46 hazard episodes) — FIRST NONZERO IN PROJECT HISTORY
+  ✅ Rank-1 hazards: 100% reaction across all tested peer counts (n=2,4,5)
+  ✅ Avg reaction time: 3.25-4.0s (rank-1), 7-8s (rank-2)
+  ✅ Zero collisions even without CF safety net
+  ✅ PPO stability confirmed: std 0.608→0.120, clip_fraction active throughout
+  ⚠️ Rank-2 hazards: 50-70% reaction (6 missed reactions, all rank-2)
+  ⚠️ Training plateaued at 10M — no benefit from extending
+  ❌ Eval matrix coverage: 12/15 buckets missing (scenario geometry bug)
+     - 6/10 eval scenarios fail hazard injection (no_front_peers)
+     - Failing: eval_n1_000, eval_n1_001, eval_n2_001, eval_n3_000, eval_n3_001, eval_n4_001
+     - Working: eval_n2_000, eval_n4_000, eval_n5_000, eval_n5_001
 
-  RUN 006 — COMPLETED, FAILED ON EC2 (March 5, 2026)
-  ❌ avg_reward collapsed (~ -6,700), policy diverged
-  ❌ Root cause: hazard-specific reward terms fired during normal driving
-  ✅ Infrastructure fixes from Run 006 remain valid and retained
-
-  RUN 007 — FAILED AT 500K STEPS (March 5, 2026)
-  ❌ avg_reward=-7620, explained_variance=0, clip_fraction=0 at 542K steps
-  ❌ Root cause: comfort penalty drowns safety reward spread. PPO sees flat reward.
-
-  RUN 007.1 — FAILED AT 3M STEPS (March 5, 2026)
-  ❌ avg_reward=-5190 at 3M steps, std=1.59 (policy still random)
-  ❌ Root cause: "No Man's Land" Trap — discrete zone boundaries create poverty trap.
-     Braking was free at 9.9m (unsafe) but full-price at 10.1m (neutral).
-     Neutral zone (10-15m) gave 0.0 reward but cost comfort to cross.
-     Agent rationally stayed in unsafe zone at -5/step.
-
-  RUN 008 — FAILED AT 7.6M STEPS (March 6, 2026)
-  ❌ Launched: Linear Ramp "Gradient Bridge" (Grok analysis)
-  ✅ Early success: std dropped to 0.753 at 1M, reward hit -4120 (ramp worked!)
-  ❌ Policy exploded: std went 0.75 → 0.88 → 4.36 by 7.6M steps
-  ❌ clip_fraction=0, approx_kl=0.00002, policy_gradient_loss≈0 (completely dead)
-  ❌ Root causes (THREE problems):
-     1. PPO TRAINING INSTABILITY: LR=3e-4 too high, n_steps=2048 too small,
-        log_std unconstrained → drifted upward → policy exploded into random noise.
-     2. ECONOMIC MARGINALITY: Even when stable, active V2V braking was economically
-        marginal vs "do nothing" (let SUMO CF model drive for free). REWARD_SAFE=3.0
-        wasn't enough margin over comfort costs to make active braking dominant.
-     3. ENTROPY-DRIVEN STD DRIFT: ent_coef=0.01 dominated weak policy gradient in
-        late training. |entropy_loss×ent_coef|≈0.029 vs |policy_gradient_loss|≈1e-5.
-        Entropy pressure actively pushed std upward even as PPO updates died.
-  ✅ Key insight: The ramp DID provide gradient (proven by -4120 recovery at 1M).
-     The reward structure is fundamentally sound; needs stability + stronger incentive.
-
-  RUN 009 — IN PROGRESS ON EC2 (March 6, 2026)
-  Hybrid fix: keep ramp structure + stability fixes + stronger active V2V incentive.
-
-  Reward changes (3 constants):
-    REWARD_SAFE: 3.0 → 4.0  (stronger pull to safe zone, active braking clearly wins)
-    REWARD_FAR:  -1.0 → -2.0 (stronger anti-laziness, punishes passive CF drift)
-    RAMP_HIGH:   3.0 → 4.0  (steeper gradient, span 9 instead of 8)
-
-  Stability fixes (4 hyperparameters):
-    learning_rate: 3e-4 → 1e-4  (prevents oscillation that killed Run 008)
-    n_steps:       2048 → 4096  (smoother gradient estimates)
-    log_std_init:  0.0 → -0.5   (starts std≈0.6, prevents std explosion)
-    ent_coef:      0.01 → 0.0   (removes entropy pressure that drove std drift in Run 008)
-
-  ✅ 221 unit tests passing
-  ✅ Docker integration tests passing
-  🔜 Monitoring on EC2: cloud_prod_009, 10M steps, c6i.xlarge
-
-  Expected milestones (if working):
-    0-2M: reward climbs past -4000 (like Run 008 early phase)
-    2-5M: std drops below 0.5, V2V reaction signal appears
-    5-10M: policy convergence, positive reward
-
-  Kill signals:
-    - ep_rew_mean flat around -7000 at 3M
-    - std stuck above 0.8 or rising
-    - clip_fraction near zero consistently
+  Run 010 change vs Run 009 (ONLY change):
+    CF override: SUMO car-following model disabled during hazard events.
+    When cf_override=True and RL action below release threshold, ego speed is
+    HELD at current value (setSpeed(ego, current_speed)) instead of releasing
+    to CF (setSpeed(ego, -1)). Activates 3 steps after hazard injection.
+    This forces the RL agent to be the sole source of braking during hazards.
 
   ⚠️ CRITICAL: Board Y-axis is forward (braking axis, not X).
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ✅ Run 009 launched on EC2 with all fixes
-  ✅ Reward ramp structure preserved (proven to provide gradient)
-  ✅ Stability fixes prevent Run 008's std explosion
-  ✅ Stronger safe/far rewards make active braking beat passive "do nothing"
+  ✅ Run 010 model (10M steps) has V2V reaction — first viable model
+  ✅ CF override validated as the correct architectural fix
+  ❌ Eval matrix coverage blocks proper characterization of rank-3,4,5 behavior
 
-NEXT STEPS:
-  1. Monitor Run 009 — check at 500K, 2M, 5M steps
-  2. If successful: H5 Sim-to-real validation against real convoy recordings
-  3. Quantization (TFLite INT8 for ESP32)
-  4. Deploy on ESP32
-  5. Professor PoC demo (training curve + SUMO-GUI demo)
+BEFORE NEXT TRAINING RUN — FIX THESE:
+  1. FIX EVAL SCENARIO GEOMETRY (BLOCKER)
+     - 6/10 scenarios fail hazard injection with "no_front_peers"
+     - Root cause: at injection time, peers are behind ego or outside cone filter
+     - Must ensure all eval scenarios have >= 1 peer positioned ahead of ego
+     - After fix, re-run eval with the existing Run 010 model (no retraining needed)
+     - Target: all 15 (n, rank) buckets covered with 10 episodes each
+
+  2. CHARACTERIZE RANK-2+ BEHAVIOR
+     - Rank-1: 100% reaction (confirmed). Rank-2: 50-70% (incomplete data)
+     - Rank-3, 4, 5: UNTESTED (0 episodes in those buckets)
+     - Fix #1 above unblocks this automatically
+
+  3. OPTIONAL — REACTION SPEED TUNING (Run 011 if needed)
+     - Current: 3.25-4.0s reaction time for rank-1 hazards
+     - Target: <2s for real deployment
+     - Options: explicit reaction-speed bonus in reward, or steeper close-distance penalty
+     - Do NOT change hyperparameters — only reward structure
+
+NEXT STEPS (in order):
+  1. Fix eval scenario geometry (all 10 scenarios)
+  2. Re-evaluate Run 010 model with fixed scenarios (full 15-bucket coverage)
+  3. Decide: is Run 010 model sufficient, or does rank-2+ need Run 011?
+  4. H5 Sim-to-real validation against real convoy recordings
+  5. TFLite INT8 quantization for ESP32
+  6. Deploy on ESP32
+  7. Professor PoC demo (training curve + SUMO-GUI demo)
 
 KEY DOCUMENTS:
-  - **Gradient Bridge Analysis:** GROK_OPINION.txt (Grok ramp analysis)
-  - **Run 007 Strategic Plan:** 10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md
+  - **Run 010 Analysis:** 10_PLANS_ACTIVE/RUN_010_ANALYSIS.md
+  - **Run 009 Analysis:** 10_PLANS_ACTIVE/RUN_009_ANALYSIS.md
   - **Architecture:** 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
   - **Run 006 Fix Plan:** 10_PLANS_ACTIVE/RUN_006_FIX_PLAN.md
 
@@ -129,7 +105,9 @@ DO NOT:
   - Trust unit tests alone — always Docker-validate with real SUMO before EC2
   - Use learning_rate > 1e-4 (caused std explosion in Run 008)
   - Leave log_std unconstrained (must set log_std_init=-0.5 or lower)
-  - Use ent_coef > 0 (entropy pressure dominated weak policy gradient in Run 008, drove std drift)
+  - Use ent_coef > 0 (entropy pressure dominated weak policy gradient in Run 008)
+  - Disable CF override in future training runs (it's what enabled V2V reaction)
+  - Change hyperparameters mid-run if extending training
 
 ================================================================================
 ```
@@ -139,7 +117,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-008 + All Architecture)        NOW: RUN 009 ON EC2
+COMPLETED (Runs 001-010 + All Architecture)        NOW: FIX EVAL + VALIDATE
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -149,24 +127,26 @@ COMPLETED (Runs 001-008 + All Architecture)        NOW: RUN 009 ON EC2
   ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ✅ Eval n=1-5 enforced
   ✅ Run 001 (80%, n=2 only)       ✅ E. Firmware Mesh             ✅ Smoke train passed
   ✅ Run 002 (BASELINE ONLY)       ✅ F. Recording Strategy
-  ✅ EC2 Training AMI              ✅ G. Real Data Collection    [Run 003: FAILED]
-  ✅ Convoy Recording #1                                        [Run 004: FIRST SUCCESS]
-  ✅ Emulator calibrated                                          ✅ avg_reward=+352
-  ✅ Recording #2 (GO) + Extra                                    ⚠️ 0% V2V reaction
-[Run 005: REGRESSED]                                           [Run 006: FAILED]
-  ❌ avg_reward=+175                                             ❌ reward economy collapse
-[Run 007: FAILED]              [Run 007.1: FAILED]            [Run 008: FAILED]
-  ❌ comfort drowns safety       ❌ poverty trap (zones)         ❌ std explosion (LR too high)
-  ❌ avg_reward=-7620            ❌ avg_reward=-5190             ✅ ramp proved gradient works
-[Run 009: IN PROGRESS]
-  ► Steeper ramp (+4 safe, -2 far) + stability (LR 1e-4, n_steps 4096, log_std -0.5)
-  ► Monitoring on EC2 (cloud_prod_009, 10M steps)
+  ✅ EC2 Training AMI              ✅ G. Real Data Collection
+  ✅ Convoy Recording #1
+  ✅ Emulator calibrated
+  ✅ Recording #2 (GO) + Extra
 
-CURRENT FOCUS: Monitor Run 009 → Analyze → H5 Sim-to-Real → Quantize → Deploy
+[Runs 003-008: ALL FAILED]     [Run 009: STABLE BUT PASSIVE]  [Run 010: BREAKTHROUGH]
+  ❌ 003: speed pinning           ✅ avg_reward=-3460             ✅ avg_reward=-3119
+  ❌ 004: passive (0% V2V)        ✅ PPO stability solved         ✅ V2V reaction: 87%
+  ❌ 005: mocked SUMO             ❌ V2V reaction: 0%             ✅ 0% collision rate
+  ❌ 006: reward economy          ❌ CF model did all braking     ✅ CF override worked
+  ❌ 007: comfort drowns signal                                   ⚠️ Eval coverage: 3/15
+  ❌ 007.1: poverty trap
+  ❌ 008: std explosion
+
+CURRENT FOCUS: Fix eval scenarios → Re-evaluate → H5 Sim-to-Real → Quantize → Deploy
 ─────────────────────────────────────────────────────────────────────────────────
-  ✅ Run 004: only successful model (avg_reward=+352, but passive "do nothing")
-  ✅ Run 008: ramp provided gradient (hit -4120) but PPO stability failed
-  ► Run 009: ramp + stronger incentive + stability = should get active V2V braking
+  ✅ Run 010: first model with active V2V braking (87% reaction rate)
+  ► Fix eval scenario geometry (6/10 scenarios have peers behind ego)
+  ► Re-evaluate Run 010 model with all 15 (n, rank) buckets covered
+  ○ Run 011 (only if rank-2+ reaction or reaction speed needs improvement)
   ○ H5: Sim-to-real validation against real recordings
   ○ Quantize INT8 for ESP32
   ○ Deploy on ESP32
@@ -177,16 +157,17 @@ CURRENT FOCUS: Monitor Run 009 → Analyze → H5 Sim-to-Real → Quantize → D
 
 ## Training Run History (Quick Reference)
 
-| Run | Reward | Key Metric | Status | Root Cause |
-|-----|--------|-----------|--------|------------|
-| 003 | -6511 | trapped in penalty loop | FAILED | ActionApplicator pinned speed, PENALTY_MISSED_WARNING too aggressive |
-| 004 | **+352** | 81% behavioral success | **SUCCESS** | "Do nothing" strategy — 0% V2V reaction |
-| 005 | +175 | regressed from 004 | FAILED | Unit tests mocked SUMO — no Docker validation |
-| 006 | -6700 | policy diverged | FAILED | Hazard reward terms fired during normal driving |
-| 007 | -7620 | explained_variance=0 | FAILED | Comfort penalty drowns safety signal |
-| 007.1 | -5190 | std=1.59 at 3M | FAILED | Discrete zone boundaries create poverty trap |
-| 008 | -7340 | std=4.36 at 7.6M | FAILED | LR too high + "do nothing" beats active braking |
-| **009** | **TBD** | **monitoring** | **IN PROGRESS** | Ramp + stability + stronger incentive |
+| Run | Reward | V2V Reaction | Status | Root Cause / Key Result |
+|-----|--------|-------------|--------|------------------------|
+| 003 | -6511 | 0% | FAILED | ActionApplicator pinned speed, PENALTY_MISSED_WARNING too aggressive |
+| 004 | +352 | 0% | Partial | First working model, but passive — CF did all braking |
+| 005 | +175 | 0% | FAILED | Unit tests mocked SUMO — no Docker validation |
+| 006 | -6700 | 0% | FAILED | Hazard reward terms fired during normal driving |
+| 007 | -7620 | 0% | FAILED | Comfort penalty drowns safety signal |
+| 007.1 | -5190 | 0% | FAILED | Discrete zone boundaries create poverty trap |
+| 008 | -7340 | 0% | FAILED | LR too high + entropy-driven std drift |
+| 009 | -3460 | 0% | Partial | Perfect stability, but passive — CF free-ride problem |
+| **010** | **-3119** | **87%** | **BREAKTHROUGH** | **CF override forced RL to brake — first V2V reaction** |
 
 ---
 
