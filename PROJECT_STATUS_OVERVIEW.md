@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 8, 2026 (Run 010 completed — FIRST V2V REACTION: 87%)
+**Last Updated:** March 10, 2026 (H5 sim-to-real validated — gradual hazard fix identified — Run 012 needed)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Post-Run 010 — Fix Eval Scenarios, Then Validate + Deploy
+## CURRENT PHASE: Run 012 Prep — Gradual Hazard Injection Fix
 
 ```
 ================================================================================
@@ -59,41 +59,43 @@
 CURRENT STATUS:
   ✅ Run 010 model (10M steps) has V2V reaction — first viable model
   ✅ CF override validated as the correct architectural fix
-  ❌ Eval matrix coverage blocks proper characterization of rank-3,4,5 behavior
+  ✅ FORMATION FIX COMPLETE (March 9, 2026)
+  ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
+  ✅ H5 SIM-TO-REAL VALIDATION COMPLETE (March 10, 2026):
+     - Model discrimination intact: raw mean shifts +0.40 for hazard observations
+     - Model activates on real data during close-approach (0.65-0.78 for 45s)
+     - Model does NOT react to peer braking at distance in real recordings
+     - Root cause: setSpeed(0) hazard injection too abrupt vs real gradual braking
+     - Model learned closing-rate+proximity reaction, not V2V signal reaction
+     - Fix: Replace setSpeed(0) with slowDown(0, 2-4s) in hazard injector
+     - See: 10_PLANS_ACTIVE/H5_SIM_TO_REAL_ANALYSIS.md
 
-BEFORE NEXT TRAINING RUN — FIX THESE:
-  1. FIX EVAL SCENARIO GEOMETRY (BLOCKER)
-     - 6/10 scenarios fail hazard injection with "no_front_peers"
-     - Root cause: at injection time, peers are behind ego or outside cone filter
-     - Must ensure all eval scenarios have >= 1 peer positioned ahead of ego
-     - After fix, re-run eval with the existing Run 010 model (no retraining needed)
-     - Target: all 15 (n, rank) buckets covered with 10 episodes each
-
-  2. CHARACTERIZE RANK-2+ BEHAVIOR
-     - Rank-1: 100% reaction (confirmed). Rank-2: 50-70% (incomplete data)
-     - Rank-3, 4, 5: UNTESTED (0 episodes in those buckets)
-     - Fix #1 above unblocks this automatically
-
-  3. OPTIONAL — REACTION SPEED TUNING (Run 011 if needed)
-     - Current: 3.25-4.0s reaction time for rank-1 hazards
-     - Target: <2s for real deployment
-     - Options: explicit reaction-speed bonus in reward, or steeper close-distance penalty
-     - Do NOT change hyperparameters — only reward structure
+COMPLETED BLOCKERS:
+  1. ✅ EVAL SCENARIO GEOMETRY — FIXED
+     - Root cause was NOT just "peers behind ego" — it was 3 compounding issues:
+       a) SUMO safe-insertion stagger (V002-V003 gap 5.9m < 9.6m threshold)
+       b) Episode 1000 steps (100s) on 785m route (vehicles exit at ~57s)
+       c) CF model compresses formation to bumper-to-bumper
+     - Fix: redistribute departPos (25-50m gaps), shorten episode (500 steps),
+       move hazard window (steps 150-350), reduce sumocfg end (65s)
+     - Audit: 15/15 eval buckets covered, zero failures
 
 NEXT STEPS (in order):
-  1. Fix eval scenario geometry (all 10 scenarios)
-  2. Re-evaluate Run 010 model with fixed scenarios (full 15-bucket coverage)
-  3. Decide: is Run 010 model sufficient, or does rank-2+ need Run 011?
-  4. H5 Sim-to-real validation against real convoy recordings
-  5. TFLite INT8 quantization for ESP32
-  6. Deploy on ESP32
-  7. Professor PoC demo (training curve + SUMO-GUI demo)
+  1. ✅ DONE: Run 011 training + evaluation (100% V2V reaction in SUMO)
+  2. ✅ DONE: H5 sim-to-real validation (gap identified, fix designed)
+  3. Implement gradual hazard injection (slowDown in hazard_injector.py)
+  4. Docker-validate the change, regenerate dataset_v7
+  5. Launch Run 012 on EC2 (gradual hazard, same hyperparams)
+  6. Re-run H5 validation — must react to peer braking at distance
+  7. TFLite INT8 quantization for ESP32
+  8. Deploy on ESP32
+  9. Professor PoC demo (training curve + SUMO-GUI demo + sim-to-real)
 
 KEY DOCUMENTS:
+  - **H5 Sim-to-Real Analysis:** 10_PLANS_ACTIVE/H5_SIM_TO_REAL_ANALYSIS.md
+  - **Run 011 Analysis:** 10_PLANS_ACTIVE/RUN_011_ANALYSIS.md
   - **Run 010 Analysis:** 10_PLANS_ACTIVE/RUN_010_ANALYSIS.md
-  - **Run 009 Analysis:** 10_PLANS_ACTIVE/RUN_009_ANALYSIS.md
   - **Architecture:** 00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md
-  - **Run 006 Fix Plan:** 10_PLANS_ACTIVE/RUN_006_FIX_PLAN.md
 
 DO NOT:
   - Train without mesh relay in the emulator
@@ -117,14 +119,14 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-010 + All Architecture)        NOW: FIX EVAL + VALIDATE
+COMPLETED (Runs 001-010 + All Architecture)        NOW: RUN 011 TRAINING
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
   ✅ ConvoyEnv Dict Obs            ✅ A. Cone Filter (Python)     ✅ Emulator validated
   ✅ Deep Sets Policy              ✅ B. Continuous Actions        ✅ base_real/ created
-  ✅ Emulator Causality Fix        ✅ C. Emulator Mesh Relay      ✅ dataset_v3 generated
-  ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ✅ Eval n=1-5 enforced
+  ✅ Emulator Causality Fix        ✅ C. Emulator Mesh Relay      ✅ dataset_v6 generated
+  ✅ Training Pipeline             ✅ D. ConvoyEnv Mesh            ✅ Eval 15/15 buckets
   ✅ Run 001 (80%, n=2 only)       ✅ E. Firmware Mesh             ✅ Smoke train passed
   ✅ Run 002 (BASELINE ONLY)       ✅ F. Recording Strategy
   ✅ EC2 Training AMI              ✅ G. Real Data Collection
@@ -141,13 +143,25 @@ COMPLETED (Runs 001-010 + All Architecture)        NOW: FIX EVAL + VALIDATE
   ❌ 007.1: poverty trap
   ❌ 008: std explosion
 
-CURRENT FOCUS: Fix eval scenarios → Re-evaluate → H5 Sim-to-Real → Quantize → Deploy
+[FORMATION FIX - COMPLETE]     [Run 011: COMPLETE]            [H5: COMPLETE]
+  ✅ Root cause: 3 issues           ✅ 100% V2V reaction (276/276)   ✅ Offline replay done
+     (insertion stagger,            ✅ avg_reward=-86.62             ✅ Model activates on real data
+      episode too long,             ✅ 0% collisions                 ⚠️ Doesn't react to V2V signal
+      CF compression)               ✅ 15/15 eval buckets              at distance (sim-to-real gap)
+  ✅ departPos redistribution       ✅ PPO std 0.60→0.04             ✅ Root cause: setSpeed(0) too
+  ✅ Episode 1000→500 steps                                            abrupt vs real braking
+  ✅ Hazard window 30-80→150-350                                     ✅ Fix: slowDown(0, 2-4s)
+  ✅ Audit: 15/15 buckets
+
+CURRENT FOCUS: Gradual hazard fix → Run 012 → Re-validate H5 → Quantize → Deploy
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Run 010: first model with active V2V braking (87% reaction rate)
-  ► Fix eval scenario geometry (6/10 scenarios have peers behind ego)
-  ► Re-evaluate Run 010 model with all 15 (n, rank) buckets covered
-  ○ Run 011 (only if rank-2+ reaction or reaction speed needs improvement)
-  ○ H5: Sim-to-real validation against real recordings
+  ✅ Formation fix: 15/15 eval buckets, zero failures
+  ✅ Run 011: 100% V2V reaction in SUMO (276/276)
+  ✅ H5: Sim-to-real gap identified (closing-rate vs V2V signal reaction)
+  ► Implement gradual hazard injection (slowDown in hazard_injector.py)
+  ○ Run 012: retrain with gradual hazards
+  ○ Re-validate H5 — must react to peer braking at distance
   ○ Quantize INT8 for ESP32
   ○ Deploy on ESP32
   ○ Professor PoC demo

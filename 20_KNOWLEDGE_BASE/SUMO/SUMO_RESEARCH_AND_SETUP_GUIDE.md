@@ -507,7 +507,10 @@ For Fedora + Wayland (XWayland), the simple `-e DISPLAY=$DISPLAY -v /tmp/.X11-un
 # Set this to the scenario directory you want to open
 SCENARIO_DIR=/absolute/path/to/scenario_dir
 XAUTH_FILE="${XAUTHORITY:-$(find /run/user/$(id -u) -maxdepth 1 -name '.mutter-Xwaylandauth.*' | head -n1)}"
-test -n "$XAUTH_FILE" || { echo "No Xwayland auth file found"; exit 1; }
+if [ -z "$XAUTH_FILE" ]; then
+  echo "No Xwayland auth file found"
+  false
+fi
 
 # If you previously launched without --user and see "Permission denied" for
 # fcd_output.csv or ssm_output.xml, delete those stale root-owned files once:
