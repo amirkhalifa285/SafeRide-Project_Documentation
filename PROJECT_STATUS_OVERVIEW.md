@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 10, 2026 (Run 013 in progress — hazard-gated reward fix)
+**Last Updated:** March 12, 2026 (Run 014 launched on EC2)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Run 013 In Progress — Gradual Hazard + Hazard-Gated Reward Fix
+## CURRENT PHASE: Run 014 IN PROGRESS on EC2 (launched March 12, 2026)
 
 ```
 ================================================================================
@@ -86,10 +86,46 @@ CURRENT STATUS:
      - reward_calculator.py: PENALTY_IGNORING_HAZARD + REWARD_EARLY_REACTION
      - BRAKING_ACCEL_THRESHOLD lowered from -3.5 to -2.5 for slowDown(2-4s)
      - 262 unit tests + Docker integration tests passing
-  ► RUN 013 IN PROGRESS (March 10, 2026):
-     - Gradual hazard injection retained (slowDown 2-4s)
-     - New hazard-gated reward objective teaches early V2V response
-     - Goal: react to peer braking signal at distance without reviving Run 006/007 poison
+  ✅ RUN 013 COMPLETE — FAILED (March 11, 2026):
+     - 0% V2V reaction (0/276), avg_reward=-1351.68, behavioral_success=42.4%
+     - Root cause: hazard_source_braking_received flag only True during 2-4s
+       active slowDown, not entire hazard event. Reward signal covers 8-16%
+       of post-hazard steps — too weak for PPO.
+     - See: 10_PLANS_ACTIVE/RUN_013_ROOT_CAUSE_ANALYSIS.md
+  ✅ LATCH FIX IMPLEMENTED (March 11, 2026):
+     - convoy_env.py: _hazard_source_braking_latched persists for rest of episode
+       once braking signal arrives — reward coverage 8-16% → ~99%
+     - Regression tests added (unit + integration)
+  ✅ BASE_REAL SCENARIO FIXED (March 11, 2026):
+     - 3 formation issues: departPos gaps too small, sigma=0.5, speedDev=0.1 default
+     - Fix: 25m uniform spacing, sigma=0.0, speedFactor=1.0 speedDev=0
+  ✅ INTEGRATION TESTS SWITCHED TO BASE_REAL (March 11, 2026):
+     - All fixtures in conftest.py + test_run006_fixes.py now use base_real
+     - Docker integration tests ALL PASSING
+  ✅ HAZARD_PROBABILITY SET TO 1.0 (March 11, 2026):
+     - ml/envs/hazard_injector.py now injects a hazard every training episode
+     - Decision rationale: latch fix restored duration; 1.0 doubles hazard exposure
+  ✅ LOCAL PIPELINE SMOKE TRAIN COMPLETE (March 11, 2026):
+     - 5k-timestep Docker run completed successfully and saved model
+     - Important: this was only a plumbing check (default single scenario), not a behavioral check
+  ✅ LOCAL DATASET SMOKE CHECK COMPLETE (March 12, 2026):
+     - 100k-timestep training on dataset_v6_formation_fix completed
+     - Sequential forced-hazard reaction check: 40/40 hazards injected
+     - 40/40 hazard-source messages received by ego
+     - 40/40 braking signals received by ego
+     - 0/40 RL reactions across n=1,2,3,4,5 (0% reaction)
+     - 0/40 collisions, 500-step episodes, success rate 100%
+     - Interpretation: signal path is healthy; 100k timesteps is too early to block EC2
+  ⚠️ LOCAL DETERMINISTIC EVAL MATRIX MISMATCH FOUND (March 12, 2026):
+     - train_convoy/evaluate_model deterministic matrix path mismatched planned scenario
+       vs actual env.reset() scenario during local smoke evaluation
+     - Workaround for checkpoint checks: use ml/scripts/check_v2v_reaction.py
+       with sequential forced-hazard eval instead of deterministic matrix mode
+  ► RUN 014 IN PROGRESS ON EC2 (launched March 12, 2026):
+     - RUN_ID: cloud_prod_014
+     - S3: s3://saferide-training-results/cloud_prod_014/
+     - Expected completion: ~18-19h on c6i.xlarge (10M steps)
+     - Dataset: dataset_v8 (regenerated on EC2 from formation-fixed base_real)
 
 COMPLETED BLOCKERS:
   1. ✅ EVAL SCENARIO GEOMETRY — FIXED
@@ -102,14 +138,20 @@ COMPLETED BLOCKERS:
      - Audit: 15/15 eval buckets covered, zero failures
 
 NEXT STEPS (in order):
-  1. ► IN PROGRESS: Run 013 training + evaluation (hazard-gated reward fix)
-  2. Re-run H5 validation — must react to peer braking at distance
-  3. TFLite INT8 quantization for ESP32
-  4. Deploy on ESP32
-  5. Professor PoC demo (training curve + SUMO-GUI demo + sim-to-real)
+  1. ✅ Push Run 014 changes to master
+  2. ✅ Update cloud script RUN_ID=cloud_prod_014
+  3. ✅ Regenerate dataset_v8 with base_real (formation-fixed) — done on EC2
+  4. ✅ Run 014 launched on EC2 (latch fix + gradual hazard + hazard_probability=1.0)
+  5. ► WAITING: Run 014 training (~18-19h, monitor S3 for results)
+  6. ► Post-run reaction check (use check_v2v_reaction.py if needed)
+  7. Re-run H5 validation — must react to peer braking at distance
+  8. TFLite INT8 quantization for ESP32
+  9. Deploy on ESP32
+  10. Professor PoC demo (training curve + SUMO-GUI demo + sim-to-real)
 
 KEY DOCUMENTS:
   - **H5 Sim-to-Real Analysis:** 10_PLANS_ACTIVE/H5_SIM_TO_REAL_ANALYSIS.md
+  - **Run 013 Root Cause Analysis:** 10_PLANS_ACTIVE/RUN_013_ROOT_CAUSE_ANALYSIS.md
   - **Run 012 Root Cause Analysis:** 10_PLANS_ACTIVE/RUN_012_ROOT_CAUSE_ANALYSIS.md
   - **Run 011 Analysis:** 10_PLANS_ACTIVE/RUN_011_ANALYSIS.md
   - **Run 010 Analysis:** 10_PLANS_ACTIVE/RUN_010_ANALYSIS.md
@@ -137,7 +179,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-012 + All Architecture)        NOW: RUN 013 TRAINING
+COMPLETED (Runs 001-013 + All Architecture)        NOW: RUN 014 ON EC2
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -175,21 +217,32 @@ COMPLETED (Runs 001-012 + All Architecture)        NOW: RUN 013 TRAINING
                                                                      + threshold -2.5
   ✅ Audit: 15/15 buckets
 
-[Run 013: IN PROGRESS]
-  ✅ Run 012 postmortem complete
-  ✅ Hazard-gated reward fix implemented
-  ✅ 262 unit + Docker integration tests passing
-  ► Training in progress with gradual hazard retained
+[Run 013: FAILED]              [Run 014: IN PROGRESS ON EC2]
+  ✅ 0% V2V reaction (0/276)       ✅ Latch fix implemented
+  ✅ avg_reward=-1351.68            ✅ base_real scenario fixed
+  ✅ Root cause: reward signal      ✅ Integration tests on base_real
+     only 8-16% of hazard steps    ✅ HAZARD_PROBABILITY=1.0 set
+  ✅ Latch fix implemented          ✅ 5k pipeline smoke passed
+  ✅ base_real formation fixed      ✅ 100k dataset smoke completed
+                                    ✅ Signal path validated (40/40 braking received)
+                                    ✅ Launched on EC2 (March 12, 2026)
 
-CURRENT FOCUS: Run 013 training → Re-validate H5 → Quantize → Deploy
+CURRENT FOCUS: Await Run 014 results → H5 re-validate → Quantize → Deploy
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Run 010: first model with active V2V braking (87% reaction rate)
   ✅ Formation fix: 15/15 eval buckets, zero failures
   ✅ Run 011: 100% V2V reaction in SUMO (276/276)
   ✅ H5: Sim-to-real gap identified and corrected into reward-objective diagnosis
   ✅ Run 012 postmortem: signal reached ego, reward ignored early V2V response
-  ✅ Hazard-gated reward fix implemented + validated (262 unit + Docker integration)
-  ► Run 013: IN PROGRESS
+  ✅ Run 013 postmortem: reward signal timing bug (8-16% coverage)
+  ✅ Latch fix: hazard_source_braking_latched persists for episode (→99% coverage)
+  ✅ base_real scenario fixed (sigma=0, speedDev=0, 25m spacing)
+  ✅ All integration tests switched to base_real + ALL PASSING
+  ✅ HAZARD_PROBABILITY = 1.0 selected for Run 014
+  ✅ Local smoke checks complete (pipeline + dataset-based)
+  ✅ V2V signal path validated locally at 100k (40/40 message/braking reception)
+  ⚠️ No RL reaction yet at 100k (0/40) — treat as too-early checkpoint, not blocker
+  ✅ Run 014: LAUNCHED ON EC2 (March 12, 2026, cloud_prod_014)
   ○ Re-validate H5 — must react to peer braking at distance
   ○ Quantize INT8 for ESP32
   ○ Deploy on ESP32
@@ -213,7 +266,8 @@ CURRENT FOCUS: Run 013 training → Re-validate H5 → Quantize → Deploy
 | **010** | **-3119** | **87%** | **BREAKTHROUGH** | **CF override forced RL to brake — first V2V reaction** |
 | **011** | **-86.62** | **100%** | **BEST** | **Formation fix + 15/15 eval buckets — 276/276 reactions** |
 | 012 | -1135.22 | 0% | FAILED | Gradual hazard exposed reward-objective gap; signal reached ego but reward ignored early V2V response |
-| 013 | *pending* | *pending* | IN PROGRESS | Gradual hazard retained + hazard-gated reward fix for early V2V response |
+| 013 | -1351.68 | 0% | FAILED | Reward signal only fires 8-16% of hazard steps; latch fix implemented for Run 014 |
+| **014** | **TBD** | **TBD** | **IN PROGRESS** | **Latch fix (99% coverage) + formation-fixed base_real + HAZARD_PROB=1.0** |
 
 ---
 
