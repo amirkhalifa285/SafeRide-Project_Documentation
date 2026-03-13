@@ -1,0 +1,55 @@
+Refined Root-Cause Analysis (Post-Critique) — The Exact Interaction That Killed the Critic in Runs 014–016
+You are correct on every point of disagreement. I was too absolute in the prior write-up. The provided postmortems (especially RUN_016_BRAKING_RECEIVED_FEATURE.md:242 and the Run 011 vs. post-slowDown contrast) already contain the core facts; I simply synthesized them into a causal chain. The “guaranteed” language was overstated. Run 011 is a direct counterexample to the broad claim that hidden timing alone kills learning — and that insight sharpens the diagnosis rather than invalidating it.
+Here is the tightened, evidence-backed causal model that survives your critique and the full document set:
+1. Hidden Timing Alias + Weak Onset Signal = the lethal combination (not either alone)
+
+Run 011 (setSpeed(0)):
+Onset produces instant, massive min_peer_accel spike (≈ –13.9 m/s² → –1.39 normalized).
+This spike is visible in ego[4] immediately and is 30× larger than normal traffic.
+Even with randomized hazard_step (150-350) and HAZARD_PROBABILITY=0.5, the critic had an unambiguous “hazard now” anchor in the observation. Value targets became learnable despite pre-onset variance. Explained variance reached 0.956.
+
+Post-slowDown (Runs 012–016):
+Onset signal is gradual (min_peer_accel ≈ –0.3 to –0.5 normalized).
+The spike anchor disappears.
+Pre-onset states (steps 0–149) now have both timing variance and no reliable signal to latch onto.
+Reward swing (≈ +7 per step once latched) is large but only appears after the weak signal arrives.
+Result: critic sees near-identical observations with return distributions that still differ by ~2000 points → explained_variance collapses to 0.
+
+
+The interaction is the root cause. Timing variance was tolerable when the onset was a screamingly obvious feature; it becomes fatal when the onset is subtle. This is why HAZARD_PROB=0.5 vs 1.0 and the braking_received bit alone failed.
+2. Obs/Reward gate desynchronization is real and still present
+Your line citations are exact (convoy_env.py:464 vs :375, reward_calculator.py:127). The two latches are deliberately separate:
+
+Observation latch (_braking_received_latched): driven by any hard-brake message (any peer ≤ –2.5).
+Reward latch (_hazard_source_braking_latched): gated to the injected source only.
+
+Even in deterministic base_real they are correlated >99 %, but not identical on every transition (mesh relay ordering, one-step lag on the flip). This adds irreducible noise exactly on the critical onset step. The policy sees ego[5]=1.0, but the reward terms may (or may not) fire on that exact transition.
+3. Markov property restoration requires more than fixed hazard_step
+You are right — fixing hazard_step=200 alone does not make the process fully Markov for the critic. Pre-hazard states at step 50 vs step 150 still look identical in the current 6-dim ego vector, yet remaining horizon (and thus expected penalty exposure) differs. Without explicit time/progress in the observation, the value function still has to infer “how much episode is left” from other noisy signals. Run 011 escaped this only because the massive spike made the remaining horizon irrelevant — the penalty hit instantly.
+4. Cone-filter question (the missing piece for sim-to-real)
+The documents confirm cone filter is fully implemented in the Python observation pipeline (Phase A, complete Feb 26–28). braking_received is currently computed in convoy_env from the raw received_map before observation_builder. Real ESP32 firmware (ConeFilter + MeshRelayPolicy) and the validate_against_real_data.py path both apply cone filtering to peer messages.
+If the bit is not cone-filtered in training, we have re-introduced a subtle sim-to-real gap for distant relayed brakes. We must decide this deliberately.
+Proposed Next Run (017) — Minimal, Diagnostic, and Robust
+Treat this as a diagnostic run first (short 1–2 M step kill if critic still dead). Incorporate every point you raised:
+
+Align reward exactly to the observation bit the policy sees (mandatory)
+Change reward_calculator call to use braking_received=self._braking_received_latched (the same variable passed to observation_builder).
+Keep the hazard_source latch in parallel for now (do not delete).
+Add explicit progress feature (addresses your Markov concern)
+Extend ego to 7-dim: ego[6] = current_step / 500.0.
+Update deep_set_extractor (features_dim 38→39). This makes every state’s remaining horizon observable → timing variance fully resolved even if we later randomize hazard_step again.
+Fixed hazard timing + full probability for the diagnostic run
+hazard_step = 200 (fixed), HAZARD_PROBABILITY=1.0.
+(We can re-randomize later once critic is alive.)
+Cone-filter decision for the braking_received bitRecommendation (pending file confirmation): Move the computation of braking_received after cone filter in the observation pipeline (or duplicate the cone logic into the latch). This guarantees the bit is exactly what real hardware and peer obs see. Distant relayed brakes will only trigger if inside the cone — which is physically correct for reaction priority and closes the last sim-to-real gap on this feature. If cone filter is purely for peer embedding and we want “any relayed brake anywhere” to count, keep it pre-cone — but I suspect the former is safer given the firmware design.
+Instrumentation (keep hazard_source path)
+Add to reward_info:Python"obs_reward_gate_divergence": 1 if self._braking_received_latched != self._hazard_source_braking_latched else 0Log per-episode max divergence. If it ever exceeds 1 % of steps we have a real desync bug; otherwise we can safely deprecate the hazard_source path later.
+
+Expected Outcome & Kill Criteria
+
+At 300 k steps: explained_variance > 0.3 (Run 011 reached 0.95; we have stronger signal now).
+At 1 M checkpoint: V2V reaction ≥ 70 % in deterministic eval matrix.
+If either fails → kill and we have a new postmortem (probably cone or progress feature interaction).
+If both pass → continue to 10 M, then full H5 re-validation.
+
+This plan is strictly stronger than my prior proposal: it incorporates the Run 011 counterexample, adds the progress feature you correctly flagged, keeps instrumentation, and surfaces the cone-filter question explicitly.

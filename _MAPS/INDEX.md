@@ -1,25 +1,26 @@
 # RoadSense V2V Documentation Index
 
 **Last Updated:** March 12, 2026
-**Total Documents:** 71+
+**Total Documents:** 72+
 
 ---
 
 ## CURRENT PROJECT STATUS
 
 ```
- Run 014 IN PROGRESS on EC2 (launched March 12, 2026)
- Latch fix + formation-fixed base_real + HAZARD_PROBABILITY=1.0
+ Run 016 KILLED at ~300k on March 12, 2026
+ Run 017 diagnostic fix plan approved; implementation pending
+ Core fixes: reward/obs alignment + ego progress + fixed hazard timing + stopped-car penalty gate
  Best model: Run 011 (100% V2V reaction, avg_reward=-86.62)
- Runs 012-013 failed (gradual hazard regressions, now fixed via latch)
- S3: s3://saferide-training-results/cloud_prod_014/
+ Runs 012-016 failed after gradual hazard change; critic dead in 014-016
 
- See: PROJECT_STATUS_OVERVIEW.md for full history (Runs 003-014)
+ See: PROJECT_STATUS_OVERVIEW.md for full history (Runs 003-017 planning)
 ```
 
 **Start Here:**
 - **Status:** [PROJECT_STATUS_OVERVIEW.md](../PROJECT_STATUS_OVERVIEW.md) - Single source of truth
-- **Run 014 Prep:** [RUN_014_PREP_CHECKLIST.md](../10_PLANS_ACTIVE/RUN_014_PREP_CHECKLIST.md) - Latch fix + launch checklist
+- **Run 017:** [RUN_017_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md) - Approved diagnostic patch set before implementation
+- **Run 016:** [RUN_016_BRAKING_RECEIVED_FEATURE.md](../10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md) - Postmortem for failed braking_received-only hypothesis
 - **Pipeline:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) - Production model path
 - **Architecture:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
 
@@ -39,14 +40,16 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (5 files)
+## 10_PLANS_ACTIVE (7 files)
 
 Active plans with open work items.
 
 | Document | Status |
 |----------|--------|
+| [RUN_017_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md) | Active plan. Claude-reviewed diagnostic fix package approved for implementation |
+| [RUN_016_BRAKING_RECEIVED_FEATURE.md](../10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md) | Postmortem. braking_received-only hypothesis disproved at ~300k |
 | [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | Production path. H5 sim-to-real validation pending post-training |
-| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Active EC2 operations. Run 009 in progress |
+| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Active EC2 operations. Next launch will be Run 017 if diagnostics pass |
 | [RUN_007_STRATEGIC_ANALYSIS.md](../10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md) | Reward ramp + stability strategy (applies to Run 007-009) |
 | [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | H0-H4 complete. H5 sim-to-real validation pending |
 | [QUANTIZATION_DUAL_TRACK_PLAN.md](../10_PLANS_ACTIVE/QUANTIZATION_DUAL_TRACK_PLAN.md) | FUTURE: TFLite INT8 for ESP32 (after successful training) |
@@ -178,11 +181,11 @@ Completed plans, approved reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES
-1. **Monitor Run 014** on EC2 (S3: cloud_prod_014, ~18-19h)
-2. **Post-run:** V2V reaction check with `check_v2v_reaction.py`
-3. **H5: Sim-to-real re-validation** — must react to peer braking at distance
-4. **Quantization** - TFLite INT8 for ESP32
-5. **Deploy on ESP32** + Professor PoC demo
+1. **Implement Run 017** diagnostic fix package
+2. **Run unit + Docker integration tests** on the new 7-dim ego path and reward alignment
+3. **Local smoke train + `check_v2v_reaction.py`** before EC2 launch
+4. **Launch Run 017** only if explained_variance wakes up locally
+5. **Post-success:** H5 re-validation, quantization, ESP32 deployment
 
 ### ESP-NOW Emulator
 - [Design](../00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md)

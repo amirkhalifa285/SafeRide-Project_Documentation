@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 12, 2026 (Run 014 launched on EC2)
+**Last Updated:** March 13, 2026 (Run 017 postmortem updated; Run 018 A+B follow-up prepared)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: Run 014 IN PROGRESS on EC2 (launched March 12, 2026)
+## CURRENT PHASE: POST-RUN-017 POSTMORTEM / RUN-018 A+B FOLLOW-UP PREPARED
 
 ```
 ================================================================================
@@ -121,11 +121,74 @@ CURRENT STATUS:
        vs actual env.reset() scenario during local smoke evaluation
      - Workaround for checkpoint checks: use ml/scripts/check_v2v_reaction.py
        with sequential forced-hazard eval instead of deterministic matrix mode
-  ► RUN 014 IN PROGRESS ON EC2 (launched March 12, 2026):
-     - RUN_ID: cloud_prod_014
+  ✅ RUN 014 KILLED AT ~987k STEPS (March 12, 2026):
+     - 1M checkpoint V2V reaction: 0/40 (0%) — no improvement from 100k smoke
+     - explained_variance = 0 for entire run — critic learned nothing
+     - ep_rew_mean improved (-3.4k → -2.75k) but likely from non-hazard behavior only
+     - Root cause: HAZARD_PROBABILITY=1.0 starved the critic — every episode had
+       massive hazard penalty, no contrastive calm episodes for value estimation
      - S3: s3://saferide-training-results/cloud_prod_014/
-     - Expected completion: ~18-19h on c6i.xlarge (10M steps)
-     - Dataset: dataset_v8 (regenerated on EC2 from formation-fixed base_real)
+     - Post-mortem: docs/10_PLANS_ACTIVE/RUN_014_CHECKPOINT_HANDOFF.md
+  ✅ RUN 015 KILLED AT ~300k STEPS (March 12, 2026):
+     - explained_variance still 0 at 300k — identical to Run 014's dead critic
+     - HAZARD_PROBABILITY=0.5 did NOT fix the critic
+     - ep_rew_mean was better (~-1500 vs ~-3200) confirming bimodal episodes work
+     - Root cause identified: observation can't distinguish hazard from calm episodes.
+       Gradual slowDown produces min_peer_accel ≈ -0.3 to -0.5 (normalized), similar to
+       normal traffic. But PENALTY_IGNORING_HAZARD creates ~2000 point return gap between
+       episode types. Critic sees same-looking states with wildly different returns → can't learn.
+     - S3: s3://saferide-training-results/cloud_prod_015/
+  ✅ BRAKING_RECEIVED BINARY FEATURE IMPLEMENTED + VALIDATED (March 12, 2026):
+     - observation_builder.py: ego obs 5-dim → 6-dim, new ego[5] = braking_received (0/1)
+     - Triggered by any_braking_peer_received (any peer accel <= -2.5 m/s²)
+     - Latched per episode in convoy_env.py; Run 016 later showed this still did not exactly match the reward-driving hazard-source latch
+     - validate_against_real_data.py now computes and passes braking_received
+     - deep_set_extractor.py: ego_feature_dim 5→6, features_dim 37→38
+     - Targeted local unit tests passed (54/54) and Docker integration tests passed
+     - See: docs/10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md
+  ✅ RUN 016 KILLED AT ~300k STEPS (March 12, 2026):
+     - explained_variance stayed at 0 / numerical noise (~±1e-7) through 300k
+     - braking_received feature did NOT wake the critic
+     - Run 016 disproved the "missing binary feature only" hypothesis
+     - Remaining issue: value-target aliasing still exists before hazard onset,
+       and observation/reward still do not key off the exact same event
+     - 1M checkpoint was not taken; run was killed early
+     - S3: s3://saferide-training-results/cloud_prod_016/
+     - Postmortem: docs/10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md
+  ✅ RUN 017 DIAGNOSTIC FIX PLAN REVIEWED + APPROVED (March 12, 2026):
+     - External review verified 4 code-backed claims:
+       1) observation and reward use different latches
+       2) stopped ego can still take ignoring-hazard penalty
+       3) braking_received is currently pre-cone
+       4) CF override blocks free-riding on SUMO CF once active
+     - Approved Run 017 diagnostic package:
+       a) align reward to the observation braking latch
+       b) add progress feature (ego 6→7 dim)
+       c) diagnostic timing: default hazard_step=200, HAZARD_PROBABILITY=1.0
+       d) gate ignoring-hazard penalty on ego_speed only
+       e) keep braking_received pre-cone for Run 017 and instrument divergence
+     - Important: progress feature is diagnostic only, not final deployment input
+     - See: docs/10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md
+  ✅ RUN 017 POSTMORTEM UPDATE (March 13, 2026):
+     - Latest observed cloud log still showed explained_variance at numerical noise
+       through ~569k timesteps, but this alone is NOT a reliable kill threshold:
+       Run 011 first exceeded 0.1 only at 1,314,816 steps, Run 013 at 389,120
+     - More important: a new code-backed bug was found in convoy_env reset/warmup
+     - reset() fed _step_espnow() during warmup, and _step_espnow() could latch
+       braking_received before the episode started
+     - Impact: Run 016 could start with contaminated ego[5]; Run 017 could start
+       with contaminated ego[5] AND contaminated reward gating, because reward was
+       aligned to that same latch
+     - Local fix added: warmup now populates emulator history without updating the
+       episode latch, then explicitly clears braking_received before episode start
+     - Targeted unit regression added and passing
+  ✅ RUN 018 FOLLOW-UP IMPLEMENTED LOCALLY (March 13, 2026):
+     - Option A: stronger gradual hazard cue by shortening slowDown duration
+       from 2.0-4.0s to 0.5-1.5s
+     - Option B: PPO training wrapped in VecNormalize(norm_obs=False,
+       norm_reward=True) with vecnormalize.pkl saved after training
+     - If Run 018 still fails, re-open investigation into warmup/pre-episode
+       signal contamination or another remaining observability bug
 
 COMPLETED BLOCKERS:
   1. ✅ EVAL SCENARIO GEOMETRY — FIXED
@@ -138,18 +201,25 @@ COMPLETED BLOCKERS:
      - Audit: 15/15 eval buckets covered, zero failures
 
 NEXT STEPS (in order):
-  1. ✅ Push Run 014 changes to master
-  2. ✅ Update cloud script RUN_ID=cloud_prod_014
-  3. ✅ Regenerate dataset_v8 with base_real (formation-fixed) — done on EC2
-  4. ✅ Run 014 launched on EC2 (latch fix + gradual hazard + hazard_probability=1.0)
-  5. ► WAITING: Run 014 training (~18-19h, monitor S3 for results)
-  6. ► Post-run reaction check (use check_v2v_reaction.py if needed)
-  7. Re-run H5 validation — must react to peer braking at distance
-  8. TFLite INT8 quantization for ESP32
-  9. Deploy on ESP32
-  10. Professor PoC demo (training curve + SUMO-GUI demo + sim-to-real)
+  1. ✅ Run 014 killed (critic dead at 987k, HAZARD_PROB=1.0)
+  2. ✅ Run 015 killed (critic still dead at 300k, HAZARD_PROB=0.5 didn't help)
+  3. ✅ Root cause: observation can't distinguish hazard vs calm episodes
+  4. ✅ braking_received binary feature implemented (ego 5→6 dim)
+  5. ✅ Docker integration tests passed for Run 016
+  6. ✅ Cloud training script updated for Run 016 (RUN_ID=cloud_prod_016)
+  7. ✅ Run 016 launched on EC2 (`cloud_prod_016`)
+  8. ✅ Monitor explained_variance at ~300k (still dead)
+  9. ✅ Kill Run 016 at ~300k (primary hypothesis failed)
+  10. ✅ Run 017 fix plan drafted
+  11. ✅ External review complete — diagnostic plan approved
+  12. ✅ Run 017 diagnostic patch set implemented
+  13. ✅ Run 017 postmortem updated with warmup-latch contamination bug
+  14. ✅ Run 018 A+B follow-up implemented locally
+  15. ► Run 018 and evaluate whether stronger gradual braking cue + reward normalization recover critic learning
+  16. ► If Run 018 fails: investigate remaining pre-episode contamination / observability bugs before adding more training complexity
 
 KEY DOCUMENTS:
+  - **Run 017 Fix Plan:** 10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md
   - **H5 Sim-to-Real Analysis:** 10_PLANS_ACTIVE/H5_SIM_TO_REAL_ANALYSIS.md
   - **Run 013 Root Cause Analysis:** 10_PLANS_ACTIVE/RUN_013_ROOT_CAUSE_ANALYSIS.md
   - **Run 012 Root Cause Analysis:** 10_PLANS_ACTIVE/RUN_012_ROOT_CAUSE_ANALYSIS.md
@@ -179,7 +249,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-013 + All Architecture)        NOW: RUN 014 ON EC2
+COMPLETED (Runs 001-016 + All Architecture)        NOW: POST-RUN-016 ANALYSIS
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -217,17 +287,26 @@ COMPLETED (Runs 001-013 + All Architecture)        NOW: RUN 014 ON EC2
                                                                      + threshold -2.5
   ✅ Audit: 15/15 buckets
 
-[Run 013: FAILED]              [Run 014: IN PROGRESS ON EC2]
-  ✅ 0% V2V reaction (0/276)       ✅ Latch fix implemented
-  ✅ avg_reward=-1351.68            ✅ base_real scenario fixed
-  ✅ Root cause: reward signal      ✅ Integration tests on base_real
-     only 8-16% of hazard steps    ✅ HAZARD_PROBABILITY=1.0 set
-  ✅ Latch fix implemented          ✅ 5k pipeline smoke passed
-  ✅ base_real formation fixed      ✅ 100k dataset smoke completed
-                                    ✅ Signal path validated (40/40 braking received)
-                                    ✅ Launched on EC2 (March 12, 2026)
+[Run 013: FAILED]              [Run 014: KILLED]              [Run 015: KILLED]
+  ✅ 0% V2V reaction (0/276)       ✅ Latch fix implemented          ✅ HAZARD_PROB 0.5 (was 1.0)
+  ✅ avg_reward=-1351.68            ✅ base_real scenario fixed       ❌ explained_variance still 0
+  ✅ Root cause: reward signal      ❌ explained_variance=0              at 300k — HAZARD_PROB was
+     only 8-16% of hazard steps    ❌ V2V reaction 0% at 1M             NOT the critic problem
+  ✅ Latch fix implemented          ❌ Killed at ~987k steps          ✅ Root cause: observation
+  ✅ base_real formation fixed      ✅ Root cause: HAZARD_PROB=1.0       can't distinguish hazard vs
+                                       (partial — not sole cause)        calm states with gradual
+                                                                         slowDown signal
 
-CURRENT FOCUS: Await Run 014 results → H5 re-validate → Quantize → Deploy
+[Run 016: KILLED @300k]
+  ✅ braking_received binary feature added (ego obs 5→6 dim)
+  ✅ any peer accel <= -2.5 → ego[5]=1.0 (maps to real ESP32 V2V)
+  ✅ features_dim 37→38 (DeepSetExtractor updated)
+  ✅ Docker integration tests passed
+  ❌ explained_variance stayed ~0 through 300k
+  ❌ Feature did not solve dead critic
+  ✅ Root cause updated: hidden hazard timing + reward/observation mismatch remain
+
+CURRENT FOCUS: Run 016 postmortem → redesign reward/value alignment → relaunch → H5 re-validate → Quantize → Deploy
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Run 010: first model with active V2V braking (87% reaction rate)
   ✅ Formation fix: 15/15 eval buckets, zero failures
@@ -242,7 +321,17 @@ CURRENT FOCUS: Await Run 014 results → H5 re-validate → Quantize → Deploy
   ✅ Local smoke checks complete (pipeline + dataset-based)
   ✅ V2V signal path validated locally at 100k (40/40 message/braking reception)
   ⚠️ No RL reaction yet at 100k (0/40) — treat as too-early checkpoint, not blocker
-  ✅ Run 014: LAUNCHED ON EC2 (March 12, 2026, cloud_prod_014)
+  ✅ Run 014: KILLED — critic dead (explained_variance=0), V2V reaction 0% at 1M
+  ✅ Root cause: HAZARD_PROBABILITY=1.0 starved critic of contrastive episodes
+  ✅ Run 015: KILLED — critic still dead (explained_variance=0 at 300k)
+     - HAZARD_PROBABILITY=0.5 did NOT fix critic. Bimodal episodes confirmed but
+       observation can't distinguish them (gradual slowDown signal too weak)
+  ✅ braking_received binary feature added to ego obs (5→6 dim, index 5)
+     - Gives critic/actor explicit 0/1 signal when any peer brakes hard
+     - 266 unit tests + Docker integration tests passed before EC2 launch
+  ✅ Run 016: KILLED at ~300k
+     - explained_variance remained 0 / numerical noise despite braking_received
+     - next fix must address reward/value alignment, not just add another obs bit
   ○ Re-validate H5 — must react to peer braking at distance
   ○ Quantize INT8 for ESP32
   ○ Deploy on ESP32
@@ -267,7 +356,9 @@ CURRENT FOCUS: Await Run 014 results → H5 re-validate → Quantize → Deploy
 | **011** | **-86.62** | **100%** | **BEST** | **Formation fix + 15/15 eval buckets — 276/276 reactions** |
 | 012 | -1135.22 | 0% | FAILED | Gradual hazard exposed reward-objective gap; signal reached ego but reward ignored early V2V response |
 | 013 | -1351.68 | 0% | FAILED | Reward signal only fires 8-16% of hazard steps; latch fix implemented for Run 014 |
-| **014** | **TBD** | **TBD** | **IN PROGRESS** | **Latch fix (99% coverage) + formation-fixed base_real + HAZARD_PROB=1.0** |
+| 014 | -2750* | 0% | KILLED @987k | Latch fix worked but HAZARD_PROB=1.0 starved critic (explained_variance=0 entire run) |
+| 015 | -1500* | 0%* | KILLED @300k | HAZARD_PROB=0.5 fixed bimodal reward but critic still dead — observation can't distinguish episode types |
+| 016 | TBD | TBD | KILLED @300k | braking_received binary feature did not wake critic; remaining issue is hidden hazard timing + reward/observation mismatch |
 
 ---
 
