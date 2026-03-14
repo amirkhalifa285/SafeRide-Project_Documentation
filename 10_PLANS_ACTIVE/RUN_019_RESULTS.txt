@@ -113,3 +113,12 @@ Run 019 — 10M Production Results
   2. TFLite INT8 quantization
   3. ESP32 deployment
   4. Professor PoC demo
+
+
+VALIDATION:
+
+cd /home/amirkhalifa/RoadSense2/roadsense-v2v && source ml/venv/bin/activate
+
+python -m ml.scripts.validate_against_real_data --tx_csv /home/amirkhalifa/RoadSense2/Convoy_recording_02282026/V001_tx_004.csv --rx_csv /home/amirkhalifa/RoadSense2/Convoy_recording_02282026/V001_rx_004.csv --model_path ml/results/cloud_prod_019/model_final.zip --output_dir ml/data/sim_to_real_validation_run019 --forward_axis y --recording_name recording_02_latched_p04 --progress 0.4 --braking_received_mode latched
+
+

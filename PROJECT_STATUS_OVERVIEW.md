@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 14, 2026 (Run 019 COMPLETE — FINAL MODEL READY FOR DEPLOYMENT)
+**Last Updated:** March 14, 2026 (Run 019 sim-to-real revalidation complete — retraining decision pending)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: POST-TRAINING — DEPLOYMENT PIPELINE (Run 019 = Final Model)
+## CURRENT PHASE: POST-TRAINING — SIM-TO-REAL CORRECTION (Run 019 = best SUMO model, not deployable)
 
 ```
 ================================================================================
@@ -57,7 +57,7 @@
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ✅ TRAINING COMPLETE — Run 019 is the FINAL MODEL for deployment
+  ⚠️ TRAINING COMPLETE — Run 019 is the BEST SUMO model, but NOT deployable
   ✅ CF override validated as the correct architectural fix
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
@@ -208,7 +208,7 @@ CURRENT STATUS:
        ✅ Reaction times: 0.21-1.49s (10x faster than Run 011's 2.88-11.02s)
        ✅ 15/15 eval matrix buckets covered
      - S3: s3://saferide-training-results/cloud_prod_018/
-  ✅ RUN 019 COMPLETE — FINAL MODEL (March 14, 2026):
+  ✅ RUN 019 COMPLETE — BEST SUMO MODEL / NOT DEPLOYABLE (March 14, 2026):
      - 10M production run — same config as Run 018 + Monitor wrapper
      - RESULTS:
        ✅ V2V reaction: 100% (276/276) across ALL ranks and peer counts
@@ -230,7 +230,21 @@ CURRENT STATUS:
      - Safety metrics UNAFFECTED by reward regression: 0 collisions, 100% reaction
      - S3: s3://saferide-training-results/cloud_prod_019/
      - Local: roadsense-v2v/ml/results/cloud_prod_019/
-     - THIS IS THE FINAL MODEL for deployment pipeline
+     - IMPORTANT: This is the best simulation model so far, but later March 14
+       sim-to-real revalidation showed it is NOT deployable as-is
+  ✅ RUN 019 H5 RE-VALIDATION COMPLETE (March 14, 2026):
+     - Original replay semantics (`latched`, `progress=0.4`) still fail badly:
+       Recording #2 = 100.0% detection / 85.3% false positives
+       Extra driving = 91.3% detection / 92.0% false positives
+     - Replay ablations proved sticky `braking_received` is a MAJOR issue, but
+       replay fixes alone do NOT make Run 019 deployable:
+       `off`, `progress=0.0` → Recording #2 = 44.0% / 6.3%, Extra = 78.3% / 21.8%
+       `instant`, `progress=0.0` → Recording #2 = 52.0% / 10.6%, Extra = 78.3% / 22.5%
+       `latched`, timeout=5000ms, `progress=0.0`
+         → Recording #2 = 60.0% / 28.0%, Extra = 91.3% / 29.8%
+     - Updated diagnosis: deployment-incompatible observation semantics
+       (`braking_received`, `progress`) + incomplete real-world generalization
+     - See: docs/10_PLANS_ACTIVE/RUN_019_SIM_TO_REAL_ANALYSIS.md
 
 COMPLETED BLOCKERS:
   1. ✅ EVAL SCENARIO GEOMETRY — FIXED
@@ -249,10 +263,16 @@ NEXT STEPS (in order):
      100% V2V reaction (276/276), avg_reward=+691.72, explained_variance 0.71-0.93
   4. ✅ Run 019: 10M production run COMPLETE — 100% V2V reaction (276/276),
      avg_reward=-2.48, std 0.052, explained_variance 0.94, 0% collisions
-  5. ► Re-validate H5 sim-to-real with Run 019 model (should react to V2V at distance)
-  6. ○ Quantize INT8 for ESP32 (TFLite)
-  7. ○ Deploy on ESP32
-  8. ○ Professor PoC demo
+  5. ✅ Re-validate H5 sim-to-real with Run 019 model
+     Result: NOT deployable; sticky latch is major issue, replay fixes alone insufficient
+  6. ► Design retraining plan that preserves Run 018/019 critic fixes while removing
+     deployment-incompatible observation semantics
+  7. ► Guard retraining against regression to 0% V2V reaction and dead critic
+     (`explained_variance = 0`)
+  8. ○ Retrain diagnostic run with deployment-compatible observation design
+  9. ○ Quantize INT8 for ESP32 (TFLite) only after new real-data validation passes
+  10. ○ Deploy on ESP32
+  11. ○ Professor PoC demo
 
 KEY DOCUMENTS:
   - **Run 017 Fix Plan:** 10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md
@@ -285,7 +305,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-019 + All Architecture)        NOW: DEPLOYMENT PIPELINE
+COMPLETED (Runs 001-019 + All Architecture)        NOW: SIM-TO-REAL CORRECTION
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -340,7 +360,7 @@ COMPLETED (Runs 001-019 + All Architecture)        NOW: DEPLOYMENT PIPELINE
   ❌ Feature didn't fix critic       ❌ explained_variance still ~0
                                      ❌ slowDown signal still too weak
 
-[Run 018: SUCCESS — DIAGNOSTIC]   [Run 019: COMPLETE — FINAL MODEL]
+[Run 018: SUCCESS — DIAGNOSTIC]   [Run 019: BEST SUMO MODEL / NOT DEPLOYABLE]
   ✅ BRAKING_DURATION 0.5-1.5s       ✅ 10M production run COMPLETE
      (was 2-4s → signal now -10)     ✅ 100% V2V reaction (276/276)
   ✅ VecNormalize(norm_reward=True)   ✅ avg_reward=-2.48 (median +81)
@@ -348,10 +368,10 @@ COMPLETED (Runs 001-019 + All Architecture)        NOW: DEPLOYMENT PIPELINE
   ✅ 100% V2V reaction (276/276)     ✅ std 0.602→0.052, expl_var 0.94
   ✅ avg_reward=+691.72 (2M BEST)    ✅ Reaction: 0.10-2.50s (avg 0.31s)
   ✅ explained_variance 0.71-0.93    ✅ 15/15 eval, Deep Sets n=1-5
-  ✅ Reaction: 0.21-1.49s (10x↑)    ✅ FINAL MODEL for deployment
+  ✅ Reaction: 0.21-1.49s (10x↑)    ⚠️ Replay-corrected sim-to-real still fails
   ✅ 15/15 eval, 0% collisions
 
-CURRENT FOCUS: H5 re-validate → Quantize INT8 → Deploy on ESP32 → PoC Demo
+CURRENT FOCUS: retraining design → preserve critic / V2V behavior → new H5 validation
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Runs 012-016: gradual slowDown signal too weak for critic (5 consecutive failures)
   ✅ Run 017: 5 structural fixes still failed — warmup contamination found & fixed
@@ -360,9 +380,14 @@ CURRENT FOCUS: H5 re-validate → Quantize INT8 → Deploy on ESP32 → PoC Demo
      Reaction times 10x faster than Run 011 (0.21-1.49s vs 2.88-11.02s)
   ✅ Run 019: 10M PRODUCTION COMPLETE — 100% V2V reaction (276/276), 0% collisions
      std 0.052, explained_variance 0.94, reaction times 0.10-2.50s (avg 0.31s)
-     FINAL MODEL: roadsense-v2v/ml/results/cloud_prod_019/model_final.zip
-  ► Re-validate H5 sim-to-real with Run 019 model
-  ○ Quantize INT8 for ESP32
+     BUT real-data replay still shows non-deployable sensitivity/specificity tradeoff
+  ✅ Run 019 H5 re-validation + replay ablations COMPLETE
+     sticky latch is major issue; replay fixes alone still leave either low
+     sensitivity or high false positives
+  ► Design deployment-compatible observation semantics for retraining
+  ► Preserve Run 018/019 critic fixes; avoid regression to 0% V2V and expl_var=0
+  ○ Retrain diagnostic run
+  ○ Quantize INT8 for ESP32 only after new real-data validation passes
   ○ Deploy on ESP32
   ○ Professor PoC demo
 ```
@@ -390,7 +415,7 @@ CURRENT FOCUS: H5 re-validate → Quantize INT8 → Deploy on ESP32 → PoC Demo
 | 016 | TBD | TBD | KILLED @300k | braking_received binary feature did not wake critic; remaining issue is hidden hazard timing + reward/observation mismatch |
 | 017 | TBD | TBD | KILLED @565k | 5 structural fixes (reward alignment, progress, timing, speed-gate, instrumentation) still failed — gradual slowDown signal indistinguishable from normal CF |
 | **018** | **+691.72** | **100%** | **SUCCESS (2M diagnostic)** | **BRAKING_DURATION 0.5-1.5s + VecNormalize recovered critic — 276/276 reactions, 0.21-1.49s reaction times, explained_variance 0.71-0.93** |
-| **019** | **-2.48** | **100%** | **COMPLETE — FINAL MODEL** | **10M production: 276/276 reactions, 0.10-2.50s reaction times (avg 0.31s), std 0.052, explained_variance 0.94, 0% collisions. Reward regression from tighter policy but safety metrics perfect. DEPLOY THIS MODEL.** |
+| **019** | **-2.48** | **100%** | **COMPLETE — BEST SUMO MODEL / NOT DEPLOYABLE** | **10M production: 276/276 reactions, 0.10-2.50s reaction times (avg 0.31s), std 0.052, explained_variance 0.94, 0% collisions. Real-data replay failed: original semantics gave 85-92% false positives, and replay ablations still showed inadequate sensitivity/specificity. Use as retraining baseline, not for deployment.** |
 
 ---
 
