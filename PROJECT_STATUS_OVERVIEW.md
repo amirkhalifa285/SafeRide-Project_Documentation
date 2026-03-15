@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 14, 2026 (Run 019 sim-to-real revalidation complete — retraining decision pending)
+**Last Updated:** March 15, 2026 (Run 020 postmortem complete — SUMO passed, replay failed)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: POST-TRAINING — SIM-TO-REAL CORRECTION (Run 019 = best SUMO model, not deployable)
+## CURRENT PHASE: POST-RUN 020 — SENSITIVITY RECOVERY / SIM-TO-REAL CORRECTION
 
 ```
 ================================================================================
@@ -57,7 +57,11 @@
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ⚠️ TRAINING COMPLETE — Run 019 is the BEST SUMO model, but NOT deployable
+  ⚠️ TRAINING COMPLETE — Run 020 concluded, but deployment is still BLOCKED
+  ✅ Run 020 proved deployment-compatible observation semantics can preserve
+     critic health and 100% V2V reaction in SUMO
+  ❌ Run 020 failed the real-data replay gate: false positives are now low, but
+     sensitivity collapsed badly on both recordings
   ✅ CF override validated as the correct architectural fix
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
@@ -245,6 +249,26 @@ CURRENT STATUS:
      - Updated diagnosis: deployment-incompatible observation semantics
        (`braking_received`, `progress`) + incomplete real-world generalization
      - See: docs/10_PLANS_ACTIVE/RUN_019_SIM_TO_REAL_ANALYSIS.md
+  ✅ RUN 020 COMPLETE — SUMO PASS / REPLAY FAIL (March 15, 2026):
+     - 2M diagnostic run with deployment-compatible observation design
+       (`progress` removed, `braking_received` replaced by decay)
+     - Actual cloud dataset used: `dataset_v10_run020_post_cone`
+       (different dataset ID from the planned preserved `dataset_v6` baseline,
+       but still intended to be `base_real`-derived with canonical params)
+     - SUMO results:
+       ✅ 100% V2V reaction (276/276) across `n=1..5`
+       ✅ 0% collisions, 98.55% behavioral success
+       ✅ explained_variance healthy throughout: 0.961 near 500k, 0.925 near end
+       ✅ avg_reward = +691.62 in final eval
+     - Real-data replay results:
+       ❌ Recording #2 = 12.0% sensitivity / 6.07% false positives
+       ❌ Extra driving = 17.4% sensitivity / 7.72% false positives
+     - Interpretation: the permanent-latch mismatch was removed, but the
+       retrained policy became too conservative and now misses most real braking
+       events even when peers are visible
+     - Decision: do NOT promote to 10M, do NOT deploy, use as a negative result
+       for the next sensitivity-recovery run
+     - See: docs/10_PLANS_ACTIVE/RUN_020_POSTMORTEM.md
 
 COMPLETED BLOCKERS:
   1. ✅ EVAL SCENARIO GEOMETRY — FIXED
@@ -265,16 +289,23 @@ NEXT STEPS (in order):
      avg_reward=-2.48, std 0.052, explained_variance 0.94, 0% collisions
   5. ✅ Re-validate H5 sim-to-real with Run 019 model
      Result: NOT deployable; sticky latch is major issue, replay fixes alone insufficient
-  6. ► Design retraining plan that preserves Run 018/019 critic fixes while removing
+  6. ✅ Design retraining plan that preserves Run 018/019 critic fixes while removing
      deployment-incompatible observation semantics
-  7. ► Guard retraining against regression to 0% V2V reaction and dead critic
-     (`explained_variance = 0`)
-  8. ○ Retrain diagnostic run with deployment-compatible observation design
-  9. ○ Quantize INT8 for ESP32 (TFLite) only after new real-data validation passes
-  10. ○ Deploy on ESP32
-  11. ○ Professor PoC demo
+  7. ✅ Run 020 diagnostic complete
+     Result: preserves critic / SUMO reaction, but replay sensitivity collapses
+  8. ► Run 021 approved for implementation:
+     orthogonal fixes in `hazard_injector.py` only
+     a) randomize desired hazard decel in `3.0-10.0 m/s²`
+     b) add resolved-hazard episodes (40% release to CF after 2-5s)
+  9. ► Use `dataset_v6_formation_fix` as the explicit control dataset ID for
+     the next A/B and require real-data replay to pass before any 10M extension
+  10. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
+  11. ○ Deploy on ESP32
+  12. ○ Professor PoC demo
 
 KEY DOCUMENTS:
+  - **Run 020 Postmortem:** 10_PLANS_ACTIVE/RUN_020_POSTMORTEM.md
+  - **Run 020 Plan / Design Record:** 10_PLANS_ACTIVE/RUN_020_DEPLOYMENT_COMPATIBLE_OBSERVATION.md
   - **Run 017 Fix Plan:** 10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md
   - **H5 Sim-to-Real Analysis:** 10_PLANS_ACTIVE/H5_SIM_TO_REAL_ANALYSIS.md
   - **Run 013 Root Cause Analysis:** 10_PLANS_ACTIVE/RUN_013_ROOT_CAUSE_ANALYSIS.md
@@ -305,7 +336,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-019 + All Architecture)        NOW: SIM-TO-REAL CORRECTION
+COMPLETED (Runs 001-020 + All Architecture)        NOW: SENSITIVITY RECOVERY
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -371,7 +402,18 @@ COMPLETED (Runs 001-019 + All Architecture)        NOW: SIM-TO-REAL CORRECTION
   ✅ Reaction: 0.21-1.49s (10x↑)    ⚠️ Replay-corrected sim-to-real still fails
   ✅ 15/15 eval, 0% collisions
 
-CURRENT FOCUS: retraining design → preserve critic / V2V behavior → new H5 validation
+[Run 020: SUMO PASS / REPLAY FAIL]
+  ✅ Deployment-compatible ego obs
+     (remove `progress`, binary latch → decay)
+  ✅ 2M diagnostic completed, critic healthy
+  ✅ 100% V2V reaction (276/276), 0% collisions in SUMO
+  ✅ False positives now low on real replay
+  ❌ Recording #2 replay: 12.0% sensitivity / 6.07% FP
+  ❌ Extra replay: 17.4% sensitivity / 7.72% FP
+  ❌ Not promotable to 10M; next focus is sensitivity recovery
+
+CURRENT FOCUS: sensitivity-recovery retraining → preserve critic / SUMO behavior
+               while recovering real-data braking sensitivity → replay gate before 10M
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Runs 012-016: gradual slowDown signal too weak for critic (5 consecutive failures)
   ✅ Run 017: 5 structural fixes still failed — warmup contamination found & fixed
@@ -384,10 +426,16 @@ CURRENT FOCUS: retraining design → preserve critic / V2V behavior → new H5 v
   ✅ Run 019 H5 re-validation + replay ablations COMPLETE
      sticky latch is major issue; replay fixes alone still leave either low
      sensitivity or high false positives
-  ► Design deployment-compatible observation semantics for retraining
-  ► Preserve Run 018/019 critic fixes; avoid regression to 0% V2V and expl_var=0
-  ○ Retrain diagnostic run
-  ○ Quantize INT8 for ESP32 only after new real-data validation passes
+  ✅ Run 020 complete
+     deployment-compatible observation semantics preserved critic / SUMO reaction,
+     but replay sensitivity collapsed to 12-17% despite low false positives
+  ► Run 021 approved:
+     randomize desired hazard decel in `3.0-10.0 m/s²`
+     + add resolved-hazard episodes (40% release to CF after 2-5s)
+     in `hazard_injector.py`, while keeping observation / reward / PPO stable
+  ► Use `dataset_v6_formation_fix` as the explicit control dataset ID for the
+     next A/B and require replay pass before any 10M extension
+  ○ Quantize INT8 for ESP32 only after a replay-passing model exists
   ○ Deploy on ESP32
   ○ Professor PoC demo
 ```
@@ -416,6 +464,7 @@ CURRENT FOCUS: retraining design → preserve critic / V2V behavior → new H5 v
 | 017 | TBD | TBD | KILLED @565k | 5 structural fixes (reward alignment, progress, timing, speed-gate, instrumentation) still failed — gradual slowDown signal indistinguishable from normal CF |
 | **018** | **+691.72** | **100%** | **SUCCESS (2M diagnostic)** | **BRAKING_DURATION 0.5-1.5s + VecNormalize recovered critic — 276/276 reactions, 0.21-1.49s reaction times, explained_variance 0.71-0.93** |
 | **019** | **-2.48** | **100%** | **COMPLETE — BEST SUMO MODEL / NOT DEPLOYABLE** | **10M production: 276/276 reactions, 0.10-2.50s reaction times (avg 0.31s), std 0.052, explained_variance 0.94, 0% collisions. Real-data replay failed: original semantics gave 85-92% false positives, and replay ablations still showed inadequate sensitivity/specificity. Use as retraining baseline, not for deployment.** |
+| **020** | **+691.62** | **100%** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **2M diagnostic with deployment-compatible observation semantics: critic healthy (`explained_variance` 0.961 near 500k, 0.925 near end), 276/276 SUMO reactions, 0% collisions, 98.55% behavioral success. Real-data replay removed the catastrophic false positives but collapsed sensitivity: Recording #2 = 12.0% / 6.07%, Extra = 17.4% / 7.72%. Do not promote to 10M or deploy.** |
 
 ---
 
