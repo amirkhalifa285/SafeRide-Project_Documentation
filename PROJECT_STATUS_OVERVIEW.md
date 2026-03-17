@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 15, 2026 (Run 020 postmortem complete — SUMO passed, replay failed)
+**Last Updated:** March 16, 2026 (Run 022 complete — SUMO pass / replay fail; Run 023 implementation plan drafted)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: POST-RUN 020 — SENSITIVITY RECOVERY / SIM-TO-REAL CORRECTION
+## CURRENT PHASE: RUN 022 COMPLETE — SUMO PASS / REPLAY FAIL; RUN 023 IMPLEMENTATION PLANNING
 
 ```
 ================================================================================
@@ -57,12 +57,14 @@
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ⚠️ TRAINING COMPLETE — Run 020 concluded, but deployment is still BLOCKED
-  ✅ Run 020 proved deployment-compatible observation semantics can preserve
-     critic health and 100% V2V reaction in SUMO
-  ❌ Run 020 failed the real-data replay gate: false positives are now low, but
-     sensitivity collapsed badly on both recordings
-  ✅ CF override validated as the correct architectural fix
+  ► RUN 022 COMPLETE — ego heading removed from observation (2M diagnostic)
+  ✅ SUMO cleared the minimum bar: ~64.4% weighted V2V reaction, 0 collisions,
+     98.55% behavioral success, peer counts n=1..5 covered
+  ✅ Heading removal fixed the Run 021 false-positive catastrophe
+  ❌ Recording #2 replay still FAILS: 12.0% sensitivity / 2.55% false positives
+  ❌ Extra Driving replay still FAILS: 26.1% sensitivity / 4.58% false positives
+  ❌ Conclusion: Run 022 is not promotable; sensitivity recovery remains unsolved
+  ► NEXT: Run 023 implementation — state-triggered hazard onset on `base_real`
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
   ✅ H5 SIM-TO-REAL VALIDATION COMPLETE (March 10, 2026):
@@ -269,6 +271,41 @@ CURRENT STATUS:
      - Decision: do NOT promote to 10M, do NOT deploy, use as a negative result
        for the next sensitivity-recovery run
      - See: docs/10_PLANS_ACTIVE/RUN_020_POSTMORTEM.md
+  ✅ RUN 021 COMPLETE — SUMO PASS / REPLAY FAIL (March 15, 2026):
+     - 2M diagnostic with hazard decel randomization [3.0, 10.0] m/s²
+       + 40% resolved-hazard episodes (release to CF after 2-5s)
+     - SUMO results:
+       ✅ 95.3% V2V reaction (263/276) — n=2-5 all 100%, n=1 at 77%
+       ✅ avg_reward=+368, 0% collisions, 97.8% behavioral success
+       ✅ PPO healthy: explained_variance 0.85-0.91, std 0.608→0.044
+       ✅ Reaction times: 0.19-1.20s (very fast)
+     - Real-data replay results:
+       ❌ Recording #2 = 40.0% sensitivity (was 12% Run 020) / 19.16% FP
+       ❌ Extra Driving = 91.3% sensitivity (was 17% Run 020) / 93.83% FP
+     - Root cause: ego heading (ego[2]) is a SPURIOUS FEATURE. Model learned
+       heading as a route-position proxy — heading < 0 → action=1.0 (brake max),
+       heading > 0.5 → action=0.0 (calm). Extra Driving drives at heading=-0.33
+       (model's "brake zone"), Recording #2 at heading=+0.78 (model's "calm zone").
+     - Evidence: probing shows heading alone swings action from 0.0 to 1.0 —
+       more influential than braking_received, min_peer_accel, or peer distance.
+     - See: docs/10_PLANS_ACTIVE/RUN_021_HAZARD_DISTRIBUTION_FIX.md
+     - S3: s3://saferide-training-results/cloud_prod_021/
+  ✅ RUN 022 COMPLETE — SUMO PASS / REPLAY FAIL (March 16, 2026):
+     - 2M diagnostic with ego heading removed (ego 6→5 dim, features_dim 38→37)
+     - SUMO results:
+       ✅ Weighted V2V reaction ≈ 64.4% (passes the >50% 2M gate, but well below Runs 020-021)
+       ✅ avg_reward=+440.59, 0% collisions, 98.55% behavioral success
+       ✅ Eval matrix covered peer counts n=1..5
+     - Real-data replay results:
+       ❌ Recording #2 = 12.0% sensitivity / 2.55% false positives
+       ❌ Extra Driving = 26.1% sensitivity / 4.58% false positives
+     - Interpretation: heading was the dominant FP leak in Run 021, but removing it
+       alone made the policy conservative again: middling SUMO reaction plus low replay sensitivity
+     - Sanity check: filtering 81 `V001` self-RX rows from Extra Driving still fails
+       (21.7% sensitivity / 3.83% FP), so the no-go verdict is unchanged
+     - Decision: do NOT promote to 10M, keep heading removed, draft Run 023 around
+       sensitivity recovery without route-coded features
+     - See: docs/10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md
 
 COMPLETED BLOCKERS:
   1. ✅ EVAL SCENARIO GEOMETRY — FIXED
@@ -293,17 +330,23 @@ NEXT STEPS (in order):
      deployment-incompatible observation semantics
   7. ✅ Run 020 diagnostic complete
      Result: preserves critic / SUMO reaction, but replay sensitivity collapses
-  8. ► Run 021 approved for implementation:
-     orthogonal fixes in `hazard_injector.py` only
-     a) randomize desired hazard decel in `3.0-10.0 m/s²`
-     b) add resolved-hazard episodes (40% release to CF after 2-5s)
-  9. ► Use `dataset_v6_formation_fix` as the explicit control dataset ID for
-     the next A/B and require real-data replay to pass before any 10M extension
-  10. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
-  11. ○ Deploy on ESP32
-  12. ○ Professor PoC demo
+  8. ✅ Run 021 complete (hazard decel randomization + resolved-hazard episodes)
+     Result: sensitivity improved (12→40% Rec#2, 17→91% Extra) but ego heading
+     is spurious — caused 93.83% FP on Extra Driving
+  9. ✅ Run 022 complete (heading removed — ego 6→5 dim, features_dim 38→37)
+     Result: false positives fixed, but replay sensitivity still too low for promotion
+  10. ► Run 023 implementation
+      Concrete plan: keep `base_real`, use state-triggered hazard onset before adding new inputs
+  11. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
+  12. ○ Deploy on ESP32
+  13. ○ Professor PoC demo
 
 KEY DOCUMENTS:
+  - **Run 022 Postmortem:** 10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md
+  - **Run 023 Implementation Plan:** 10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md
+  - **Run 023 Hypothesis Set:** 10_PLANS_ACTIVE/RUN_023_HYPOTHESIS_SET.md
+  - **Run 022 Plan:** 10_PLANS_ACTIVE/RUN_022_REMOVE_EGO_HEADING.md
+  - **Run 021 Plan + Results:** 10_PLANS_ACTIVE/RUN_021_HAZARD_DISTRIBUTION_FIX.md
   - **Run 020 Postmortem:** 10_PLANS_ACTIVE/RUN_020_POSTMORTEM.md
   - **Run 020 Plan / Design Record:** 10_PLANS_ACTIVE/RUN_020_DEPLOYMENT_COMPATIBLE_OBSERVATION.md
   - **Run 017 Fix Plan:** 10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md
@@ -412,8 +455,8 @@ COMPLETED (Runs 001-020 + All Architecture)        NOW: SENSITIVITY RECOVERY
   ❌ Extra replay: 17.4% sensitivity / 7.72% FP
   ❌ Not promotable to 10M; next focus is sensitivity recovery
 
-CURRENT FOCUS: sensitivity-recovery retraining → preserve critic / SUMO behavior
-               while recovering real-data braking sensitivity → replay gate before 10M
+CURRENT FOCUS: Run 023 implementation → recover replay sensitivity without route memorization
+               → preserve Run 022 low-FP gains while lifting both recordings through the replay gate
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Runs 012-016: gradual slowDown signal too weak for critic (5 consecutive failures)
   ✅ Run 017: 5 structural fixes still failed — warmup contamination found & fixed
@@ -429,12 +472,14 @@ CURRENT FOCUS: sensitivity-recovery retraining → preserve critic / SUMO behavi
   ✅ Run 020 complete
      deployment-compatible observation semantics preserved critic / SUMO reaction,
      but replay sensitivity collapsed to 12-17% despite low false positives
-  ► Run 021 approved:
-     randomize desired hazard decel in `3.0-10.0 m/s²`
-     + add resolved-hazard episodes (40% release to CF after 2-5s)
-     in `hazard_injector.py`, while keeping observation / reward / PPO stable
-  ► Use `dataset_v6_formation_fix` as the explicit control dataset ID for the
-     next A/B and require replay pass before any 10M extension
+  ✅ Run 021 complete (hazard decel randomization + resolved-hazard episodes)
+     SUMO PASS: 95.3% V2V reaction, avg_reward=+368, 0% collisions
+     Replay FAIL: sensitivity improved but ego heading caused 93.83% FP on Extra
+  ✅ Run 022 complete (heading removed — ego 6→5 dim)
+     SUMO PASS: ~64.4% weighted reaction, avg_reward=+440.59, 0% collisions
+     Replay FAIL: Rec#2 12.0% / 2.55%, Extra 26.1% / 4.58%
+  ► Run 023 implementation plan drafted
+     Keep `base_real`; replace effectively fixed-time onset with state-triggered onset on the same route
   ○ Quantize INT8 for ESP32 only after a replay-passing model exists
   ○ Deploy on ESP32
   ○ Professor PoC demo
@@ -465,6 +510,10 @@ CURRENT FOCUS: sensitivity-recovery retraining → preserve critic / SUMO behavi
 | **018** | **+691.72** | **100%** | **SUCCESS (2M diagnostic)** | **BRAKING_DURATION 0.5-1.5s + VecNormalize recovered critic — 276/276 reactions, 0.21-1.49s reaction times, explained_variance 0.71-0.93** |
 | **019** | **-2.48** | **100%** | **COMPLETE — BEST SUMO MODEL / NOT DEPLOYABLE** | **10M production: 276/276 reactions, 0.10-2.50s reaction times (avg 0.31s), std 0.052, explained_variance 0.94, 0% collisions. Real-data replay failed: original semantics gave 85-92% false positives, and replay ablations still showed inadequate sensitivity/specificity. Use as retraining baseline, not for deployment.** |
 | **020** | **+691.62** | **100%** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **2M diagnostic with deployment-compatible observation semantics: critic healthy (`explained_variance` 0.961 near 500k, 0.925 near end), 276/276 SUMO reactions, 0% collisions, 98.55% behavioral success. Real-data replay removed the catastrophic false positives but collapsed sensitivity: Recording #2 = 12.0% / 6.07%, Extra = 17.4% / 7.72%. Do not promote to 10M or deploy.** |
+| **021** | **+368.00** | **95.3%** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **Hazard decel randomization + resolved-hazard episodes improved replay sensitivity, but ego heading became a spurious route-position proxy. Recording #2 = 40.0% / 19.16%, Extra = 91.3% / 93.83%. Do not promote.** |
+| **022** | **+440.59** | **64.4%*** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **Heading removed (ego 6→5 dim, features_dim 38→37). Final eval still cleared the 2M SUMO gate: ~64.4% weighted reaction from `source_reaction_summary`, 0% collisions, 98.55% behavioral success, n=1..5 covered. Replay fixed specificity but not sensitivity: Recording #2 = 12.0% / 2.55%, Extra = 26.1% / 4.58%. Keep heading removed, but do not promote to 10M.** |
+
+\* Run 022's `metrics.json` does not store one top-level overall reaction field; `64.4%` is the weighted aggregate reconstructed from `source_reaction_summary`.
 
 ---
 

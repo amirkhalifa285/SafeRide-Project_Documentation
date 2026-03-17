@@ -1,26 +1,30 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** March 12, 2026
-**Total Documents:** 72+
+**Last Updated:** March 16, 2026
+**Total Documents:** 78+
 
 ---
 
 ## CURRENT PROJECT STATUS
 
 ```
- Run 016 KILLED at ~300k on March 12, 2026
- Run 017 diagnostic fix plan approved; implementation pending
- Core fixes: reward/obs alignment + ego progress + fixed hazard timing + stopped-car penalty gate
- Best model: Run 011 (100% V2V reaction, avg_reward=-86.62)
- Runs 012-016 failed after gradual hazard change; critic dead in 014-016
+ Run 022 COMPLETE — heading removed, marginal SUMO pass, replay fail
+ Replay results: Recording #2 = 12.0% sensitivity / 2.55% FP; Extra = 26.1% / 4.58%
+ Run 021 root cause confirmed: ego heading was the dominant false-positive leak
+ Current focus: Run 023 state-triggered hazard onset on `base_real`
+ Best deployability direction so far: Run 022 fixed specificity, but sensitivity remains the blocker
+ Runs 018-022 prove the critic can train; sim-to-real sensitivity is now the main gap
 
- See: PROJECT_STATUS_OVERVIEW.md for full history (Runs 003-017 planning)
+ See: PROJECT_STATUS_OVERVIEW.md for full history
 ```
 
 **Start Here:**
 - **Status:** [PROJECT_STATUS_OVERVIEW.md](../PROJECT_STATUS_OVERVIEW.md) - Single source of truth
-- **Run 017:** [RUN_017_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md) - Approved diagnostic patch set before implementation
-- **Run 016:** [RUN_016_BRAKING_RECEIVED_FEATURE.md](../10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md) - Postmortem for failed braking_received-only hypothesis
+- **Run 023 Implementation Plan:** [RUN_023_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md) - Concrete plan for state-triggered hazard onset on `base_real`
+- **Run 022 Postmortem:** [RUN_022_POSTMORTEM.md](../10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md) - Heading removal fixed FP, but replay sensitivity still failed
+- **Run 023 Hypothesis Set:** [RUN_023_HYPOTHESIS_SET.md](../10_PLANS_ACTIVE/RUN_023_HYPOTHESIS_SET.md) - Ranked next-run hypotheses
+- **Run 022 Plan:** [RUN_022_REMOVE_EGO_HEADING.md](../10_PLANS_ACTIVE/RUN_022_REMOVE_EGO_HEADING.md) - Original heading-removal plan
+- **Run 021:** [RUN_021_HAZARD_DISTRIBUTION_FIX.md](../10_PLANS_ACTIVE/RUN_021_HAZARD_DISTRIBUTION_FIX.md) - Hazard decel randomization (SUMO pass, replay fail)
 - **Pipeline:** [Phase 6 Real Data Pipeline](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) - Production model path
 - **Architecture:** [Deep Sets Architecture](../00_ARCHITECTURE/DEEP_SETS_N_ELEMENT_ARCHITECTURE.md) - Solves n-element problem
 
@@ -40,19 +44,24 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (7 files)
+## 10_PLANS_ACTIVE (12 files)
 
 Active plans with open work items.
 
 | Document | Status |
 |----------|--------|
-| [RUN_017_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md) | Active plan. Claude-reviewed diagnostic fix package approved for implementation |
-| [RUN_016_BRAKING_RECEIVED_FEATURE.md](../10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md) | Postmortem. braking_received-only hypothesis disproved at ~300k |
-| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | Production path. H5 sim-to-real validation pending post-training |
-| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Active EC2 operations. Next launch will be Run 017 if diagnostics pass |
+| [RUN_023_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md) | Active. Concrete Run 023 plan: state-triggered hazard onset on `base_real` |
+| [RUN_023_HYPOTHESIS_SET.md](../10_PLANS_ACTIVE/RUN_023_HYPOTHESIS_SET.md) | Active. Ranked next-run hypotheses after Run 022 replay failure |
+| [RUN_022_POSTMORTEM.md](../10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md) | Complete. Heading removal fixed FP; SUMO reaction dropped to ~64%; replay sensitivity still failed |
+| [RUN_022_REMOVE_EGO_HEADING.md](../10_PLANS_ACTIVE/RUN_022_REMOVE_EGO_HEADING.md) | Complete plan. Ego heading removed; final verdict is SUMO pass / replay fail |
+| [RUN_021_HAZARD_DISTRIBUTION_FIX.md](../10_PLANS_ACTIVE/RUN_021_HAZARD_DISTRIBUTION_FIX.md) | Complete. SUMO pass (95.3% V2V), replay FAIL (93.8% FP Extra Driving) |
+| [PHASE_6_REAL_DATA_PIPELINE.md](../10_PLANS_ACTIVE/PHASE_6_REAL_DATA_PIPELINE.md) | Production path. H5 sim-to-real validation now blocked on the next replay-passing run |
+| [CLOUD_TRAINING_AWS_EXECUTION_PLAN.md](../10_PLANS_ACTIVE/CLOUD_TRAINING_AWS_EXECUTION_PLAN.md) | Active EC2 operations. Next launch: Run 023 once hypothesis choice is finalized |
 | [RUN_007_STRATEGIC_ANALYSIS.md](../10_PLANS_ACTIVE/RUN_007_STRATEGIC_ANALYSIS.md) | Reward ramp + stability strategy (applies to Run 007-009) |
 | [RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md](../10_PLANS_ACTIVE/RUN_004_HAZARD_TARGETING_AND_SOURCE_REACTION_EVAL_PLAN.md) | H0-H4 complete. H5 sim-to-real validation pending |
 | [QUANTIZATION_DUAL_TRACK_PLAN.md](../10_PLANS_ACTIVE/QUANTIZATION_DUAL_TRACK_PLAN.md) | FUTURE: TFLite INT8 for ESP32 (after successful training) |
+| [RUN_017_FIX_PLAN.md](../10_PLANS_ACTIVE/RUN_017_FIX_PLAN.md) | Historical. Fixes implemented in Run 018+ |
+| [RUN_016_BRAKING_RECEIVED_FEATURE.md](../10_PLANS_ACTIVE/RUN_016_BRAKING_RECEIVED_FEATURE.md) | Postmortem. braking_received-only hypothesis disproved at ~300k |
 
 ### Agent Prompts
 | Document | Description |
@@ -181,11 +190,11 @@ Completed plans, approved reviews, and historical documents.
 ## Quick Links by Topic
 
 ### CURRENT PRIORITIES
-1. **Implement Run 017** diagnostic fix package
-2. **Run unit + Docker integration tests** on the new 7-dim ego path and reward alignment
-3. **Local smoke train + `check_v2v_reaction.py`** before EC2 launch
-4. **Launch Run 017** only if explained_variance wakes up locally
-5. **Post-success:** H5 re-validation, quantization, ESP32 deployment
+1. **Use Run 022 postmortem** to lock in what is now known: heading must stay removed
+2. **Choose Run 023 hypothesis order** (recommended: geometry broadening first)
+3. **Keep the replay gate unchanged:** Rec#2 sensitivity >60% / FP <15%, Extra >75% / FP <20%
+4. **Do not start a 10M run** until both replay recordings pass
+5. **Post-success:** 10M production run → TFLite INT8 quantization → ESP32 deployment
 
 ### ESP-NOW Emulator
 - [Design](../00_ARCHITECTURE/ESPNOW_EMULATOR_DESIGN.md)
