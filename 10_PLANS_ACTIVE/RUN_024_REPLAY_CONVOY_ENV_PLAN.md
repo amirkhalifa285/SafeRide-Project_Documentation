@@ -1,22 +1,90 @@
 # Run 024 — ReplayConvoyEnv: Real-Data Fine-Tuning
 
-**Status:** PLANNED (contingent on Run 023 showing improvement)
-**Date:** 2026-03-17
+**Status:** READY FOR IMPLEMENTATION (Run 023 gate passed)
+**Date:** 2026-03-17 (updated after Run 023 results)
 **Author:** Amir + Claude
+
+---
+
+## 0. Run 023 Baseline (Predecessor Results)
+
+Run 023 (`cloud_prod_023`) completed a **2M-step diagnostic** with:
+- **State-triggered hazard onset** (H1) — training uses `state_bucket` mode
+- **max_closing_speed** added to ego obs (H2) — ego dims 5 -> 6
+
+### Run 023 SUMO Eval (276 episodes, deterministic matrix, 15/15 buckets)
+
+| Metric | Value |
+|--------|-------|
+| Avg Reward | **+416.94** |
+| Collision Rate | **0%** |
+| Behavioral Success | **98.55%** |
+| Weighted V2V Reaction | **~85%** |
+
+**V2V reaction by rank:**
+
+| Peers | Rank 1 | Rank 2 | Rank 3 | Rank 4 | Rank 5 |
+|-------|--------|--------|--------|--------|--------|
+| n=1 | 89.3% (1.2s) | - | - | - | - |
+| n=2 | 100% (0.2s) | 78.6% (6.5s) | - | - | - |
+| n=3 | 100% (0.2s) | 94.7% (2.9s) | 50% (5.7s) | - | - |
+| n=4 | 100% (0.2s) | 100% (0.2s) | 92.9% (0.4s) | 92.9% (2.9s) | - |
+| n=5 | 100% (0.2s) | 100% (0.2s) | 100% (0.2s) | 100% (0.3s) | 100% (1.9s) |
+
+**Key observations:**
+- +20pp V2V reaction over Run 022 (64.4% -> ~85%). H1 state-bucket worked.
+- Weak spots: n=1 rank_1 (89%), n=3 rank_3 (50%). Far-peer and single-peer hazards remain harder.
+- Run was only 2M (diagnostic). Did NOT extend to 10M.
+
+### Run 023 Replay Validation (March 17, 2026)
+
+Validated with `validate_against_real_data.py`, braking_received_mode=decay:
+
+| Recording | Sensitivity | FP Rate | Detected/Total |
+|-----------|------------|---------|----------------|
+| Recording #2 | **12.0%** | **11.28%** | 3/25 |
+| Extra Driving | **8.7%** | **21.76%** | 2/23 |
+
+**Comparison to Run 022:**
+
+| Metric | Run 022 | Run 023 | Delta |
+|--------|---------|---------|-------|
+| Rec#2 Sensitivity | 12.0% | 12.0% | 0 |
+| Rec#2 FP | 2.55% | 11.28% | **+8.7pp worse** |
+| Extra Sensitivity | 26.1% | 8.7% | **-17.4pp worse** |
+| Extra FP | 4.58% | 21.76% | **+17.2pp worse** |
+
+**Run 023 replay is WORSE than Run 022 on every metric except Rec#2 sensitivity (tied).**
+
+Key findings from event-level analysis:
+- Most missed events have `model_max_action=0.000` — the model outputs exactly zero.
+- The 3 detected events in Rec#2 (events 11, 12, 16) are near the convoy close-approach section, same as prior runs.
+- Extra Driving detections (events 21-22) are also close-approach, with model going to action=1.0 (full brake).
+- FP regression: avg calm action rose from ~0.01 to 0.039 (Rec#2) / 0.139 (Extra). The `max_closing_speed` feature or state-bucket diversity may be producing spurious activations that don't correlate with real hazards.
+
+**Interpretation:** State-bucket onset broadened SUMO training diversity (+20pp SUMO reaction) but did NOT help real-data transfer. The domain gap is architectural, not diversity-limited. H1 is insufficient alone.
+
+### Decision: Move to Run 024
+
+The replay results confirm that further SUMO-only training (extending to 10M, more H1/H3 tuning) will not close the domain gap. The model must see real sensor dynamics during training.
+
+Run 024 fine-tunes the Run 023 checkpoint on real recorded data via `ReplayConvoyEnv`.
 
 ---
 
 ## 1. Problem Statement
 
-Every run since Run 018 achieves 100% V2V reaction in SUMO but fails on real
-data replay (Run 022: 12% sensitivity Recording #2, 26.1% Extra Driving).
-The root cause is **domain gap**: the model learned SUMO's `slowDown()` dynamics,
-not real-world braking signatures observed through noisy ESP-NOW.
+SUMO-trained models consistently fail on real-data replay:
+- Run 020: 12% / 17% sensitivity, 0% / 0% FP
+- Run 021: 40% / 91% sensitivity but 19% / 94% FP (heading leak)
+- Run 022: 12% / 26% sensitivity, 2.6% / 4.6% FP (heading removed)
+- **Run 023: 12% / 8.7% sensitivity, 11.3% / 21.8% FP (state-bucket + max_closing_speed)**
 
-Run 023 (state-triggered onset + max_closing_speed) may improve training
-diversity, but it still trains entirely in SUMO.  The only way to close the
-domain gap is to expose the model to **actual real-world sensor data** during
-training.
+Run 023 proves that SUMO-side training diversity improvements (state-bucket onset,
++20pp SUMO V2V reaction) do NOT transfer to real data. The domain gap is
+architectural: the model learned SUMO's `slowDown()` dynamics, not real-world
+braking signatures observed through noisy ESP-NOW. The only way to close this
+gap is to expose the model to **actual real-world sensor data** during training.
 
 ## 2. Approach: Hybrid Replay Environment
 
@@ -39,12 +107,12 @@ SUMO can be loaded and fine-tuned directly on `ReplayConvoyEnv`.
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-# Load SUMO-trained model
-model = PPO.load("results/cloud_prod_023/model_final.zip")
+# Load Run 023 (2M SUMO) model — ~85% V2V reaction baseline
+model = PPO.load("ml/models/runs/cloud_prod_023/model_final.zip")
 
 # Load reward normalization stats from SUMO training
 vec_env = DummyVecEnv([lambda: ReplayConvoyEnv(...)])
-vec_env = VecNormalize.load("results/cloud_prod_023/vecnormalize.pkl", vec_env)
+vec_env = VecNormalize.load("ml/models/runs/cloud_prod_023/vecnormalize.pkl", vec_env)
 vec_env.training = True       # keep updating stats
 vec_env.norm_reward = True
 
@@ -56,13 +124,18 @@ model.learn(total_timesteps=500_000)
 
 Key points:
 - **Same observation space** (ego 6-dim, peers 8x6, peer_mask 8) — weights
-  transfer without modification.
+  transfer without modification. Ego dims: speed, accel, peer_count,
+  min_peer_accel, braking_received_decay, max_closing_speed (Run 023 added
+  the 6th dim).
 - **Same action space** (Box(1,)) — policy head unchanged.
 - **VecNormalize loaded** — reward scaling stays consistent.
 - **Lower LR (1e-5)** — prevents catastrophic forgetting of SUMO-learned
   convoy behavior.  The model already knows "brake when peer brakes"; we just
   need to recalibrate what real braking looks like.
 - **Shorter training (500k-1M)** — fine-tuning, not training from scratch.
+- **Run 023 was 2M steps** (diagnostic), not a full 10M production run.
+  This is intentional — we're transferring the base policy, not a
+  fully-converged one.
 
 ---
 
@@ -540,24 +613,40 @@ What IS shared:
 
 ## 9. Success Criteria
 
-### Run 024 Diagnostic (500k fine-tuning steps)
+### 9.0 Run 023 Replay Baseline (Established)
+
+Replay validation completed March 17, 2026:
+
+| Recording | Sensitivity | FP Rate |
+|-----------|------------|---------|
+| Recording #2 | 12.0% (3/25) | 11.28% |
+| Extra Driving | 8.7% (2/23) | 21.76% |
+
+Results stored: `ml/data/sim_to_real_validation_run023/`
+
+### 9.1 Run 024 Diagnostic (500k fine-tuning steps)
 
 **Must-pass (before extending):**
-- Recording #2 sensitivity > 40% (up from 12%)
-- Extra Driving FP < 25% (must not regress)
-- SUMO eval still > 80% V2V reaction (no catastrophic forgetting)
+- Recording #2 sensitivity > 40% (up from 12.0%)
+- Recording #2 FP < 15% (currently 11.28% — must not regress significantly)
+- Extra Driving FP < 25% (currently 21.76% — must not get worse)
+- SUMO eval still > 75% V2V reaction (no catastrophic forgetting;
+  Run 023 baseline is ~85%, allow 10pp regression)
 
-**Target (for 10M promotion):**
+**Target (for production promotion):**
 - Recording #2 sensitivity > 60%, FP < 15%
 - Extra Driving sensitivity > 75%, FP < 20%
-- SUMO eval > 90% V2V reaction, 0% collisions
+- SUMO eval > 80% V2V reaction, 0% collisions
 
-### Validation Protocol
+### 9.2 Validation Protocol
 
 1. Fine-tune on replay data.
-2. Run `validate_against_real_data.py` on both recordings (same as Runs 020-022).
-3. Run SUMO eval with `check_v2v_reaction.py` to check for regression.
-4. Compare sensitivity/FP against Run 023 baseline.
+2. Run `validate_against_real_data.py` on fine-tuned model (both recordings).
+3. Run SUMO eval with `check_v2v_reaction.py` (Docker) to check for regression.
+4. Compare sensitivity/FP against Run 023 replay baseline (Section 9.0).
+5. If sensitivity improved but SUMO regressed: iterate on LR / training length.
+6. If sensitivity did not improve: investigate observation pipeline mismatch
+   between `ReplayConvoyEnv` and `validate_against_real_data.py`.
 
 ---
 
