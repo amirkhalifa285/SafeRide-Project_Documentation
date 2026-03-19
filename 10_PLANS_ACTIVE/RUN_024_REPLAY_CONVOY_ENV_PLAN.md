@@ -1,7 +1,7 @@
 # Run 024 — ReplayConvoyEnv: Real-Data Fine-Tuning
 
-**Status:** READY FOR IMPLEMENTATION (Run 023 gate passed)
-**Date:** 2026-03-17 (updated after Run 023 results)
+**Status:** ROOT CAUSE INVESTIGATION COMPLETE — 4 BUGS FIXED — SENSITIVITY 12%→72% ACHIEVED — FP REGRESSION IDENTIFIED — REWARD ADAPTATION NEEDED
+**Date:** 2026-03-19 (updated after root cause investigation + v2/v3 fine-tuning)
 **Author:** Amir + Claude
 
 ---
@@ -670,3 +670,313 @@ Results stored: `ml/data/sim_to_real_validation_run023/`
    behind the recorded trajectory.  Should we clamp?  Recommendation: soft
    penalty if ego drifts > 50m from recorded position, but don't hard-clamp
    (let the reward handle it via the "far" penalty at > 35m).
+
+---
+
+## 11. Implementation Progress (March 19, 2026)
+
+### 11.1 Code Implementation — COMPLETE (v2: root cause fixes applied)
+
+All planned components have been implemented and tested. After initial fine-tuning
+attempts (v1, 11.3 below) showed zero sensitivity improvement, a root cause
+investigation (Section 12) identified 4 bugs. These were fixed and validated in
+a second implementation pass (v2).
+
+| Component | File | Status | Tests |
+|---|---|---|---|
+| `EgoKinematics` | `ml/envs/ego_kinematics.py` | ✅ Complete (~70 lines) | 15/15 passing |
+| `ReplayTrajectory` | `ml/envs/replay_trajectory.py` | ✅ Complete (~240 lines) | 20/20 passing |
+| `ReplayConvoyEnv` | `ml/envs/replay_convoy_env.py` | ✅ v2 with 4 fixes (~350 lines) | **38/38 passing** |
+| Gym registration | `ml/envs/__init__.py` | ✅ `RoadSense-ReplayConvoy-v0` registered | — |
+| Fine-tuning script | `ml/scripts/run_replay_fine_tuning.py` | ✅ v2 with Monitor + log_std reset | — |
+| Canonical data | `ml/data/recordings/{recording_02,extra_driving}/` | ✅ Copied | — |
+
+**Test summary:** 73 unit tests (38 replay env + 15 ego kin + 20 replay traj),
+all passing. 389 total unit tests passing (no regressions).
+
+### 11.2 Smoke Tests — PASSED
+
+1. **Model loads on ReplayConvoyEnv:** Run 023 model (`cloud_prod_023`) predicts
+   successfully on `ReplayConvoyEnv` with identical observation/action spaces.
+2. **50k smoke fine-tuning:** Completed in ~1 minute. PPO training loop runs
+   correctly, critic learns (explained_variance 0.42 → 0.90).
+3. **Augmentation works:** Synthetic hazard injection triggers `braking_received_decay=1.0`,
+   model produces action up to 0.567 in response.
+
+### 11.3 Fine-Tuning Runs — COMPLETED BUT SENSITIVITY DID NOT IMPROVE
+
+#### Run 024-A: LR=1e-5, 500k steps
+
+| Metric | Value |
+|---|---|
+| Training time | 9.7 minutes (873 FPS) |
+| Explained variance | 0.42 → 0.91 |
+| Policy std | 0.064 → 0.065 (stable) |
+| Clip fraction | 0.02-0.03 (conservative) |
+
+**Replay validation (LR=1e-5):**
+
+| Recording | Sensitivity | FP Rate | vs Run 023 |
+|---|---|---|---|
+| Recording #2 | **12.0%** (3/25) | 12.13% | 0pp / +0.9pp |
+| Extra Driving | **8.7%** (2/23) | 21.23% | 0pp / -0.5pp |
+
+**No change in sensitivity.** Same 3 detected events in Rec#2 (events 11, 12, 16 — close-approach section). Same 2 detected in Extra (events 21-22 — close-approach). All other events still have `model_max_action=0.000`.
+
+#### Run 024-B: LR=3e-5, 500k steps
+
+| Metric | Value |
+|---|---|
+| Training time | 9.6 minutes |
+| Explained variance | 0.42 → 0.93 |
+| Policy std | 0.064 → 0.069 (slight drift up, healthy) |
+| Clip fraction | 0.03-0.05 (more active than 1e-5) |
+
+**Replay validation (LR=3e-5):**
+
+| Recording | Sensitivity | FP Rate | vs Run 023 |
+|---|---|---|---|
+| Recording #2 | **12.0%** (3/25) | 14.12% | 0pp / +2.8pp |
+| Extra Driving | **8.7%** (2/23) | 21.70% | 0pp / -0.1pp |
+
+**Still no change in sensitivity.** Higher LR produced slightly more FP but zero improvement in detection. The fine-tuning is not modifying the model's behavior on real replay at all.
+
+### 11.4 v1 Fine-Tuning Blocker — ROOT CAUSE INVESTIGATION
+
+See **Section 12** below for the complete root cause investigation. In summary:
+4 bugs were identified, all confirmed with code evidence. All 4 were fixed and
+tested with 11 new unit tests. The investigation also discovered a 5th issue
+(policy std too tight for exploration) and a 6th issue (reward persistence
+causing FP explosion).
+
+---
+
+## 12. Root Cause Investigation (March 19, 2026)
+
+### 12.1 External Review (Codex)
+
+The codebase was reviewed by Codex, which identified 4 findings ranked by severity:
+
+1. **HIGH — Ego-state distribution shift.** `ReplayConvoyEnv` uses `EgoKinematics`
+   for ego position/speed/accel, while `validate_against_real_data.py` uses the
+   recorded TX row directly. The model is fine-tuned on a different observation
+   distribution than it sees during validation.
+   - Files: `replay_convoy_env.py:153,198`, `ego_kinematics.py:52`,
+     `validate_against_real_data.py:119,327`
+
+2. **HIGH — `braking_received` computed before cone filter.** In `ReplayConvoyEnv`,
+   braking detection ran on ALL peers before cone filtering. In both `ConvoyEnv`
+   (line 561-568) and the validator (line 341-349), braking detection runs on
+   cone-filtered peers ONLY. This creates an obs/reward mismatch — braking from
+   behind-ego peers triggers the ignoring penalty but those peers are invisible
+   in the observation.
+   - Files: `replay_convoy_env.py:202` vs `convoy_env.py:561-568`
+
+3. **MEDIUM — Episode slicing biased toward recording start.** `reset()` always
+   started from `self._snapshots[0]`, and both recordings start with
+   `speed=0.00` (stationary). The fine-tuning over-sampled stationary startup
+   instead of mid-convoy hazard contexts.
+   - Recording #2: first 67 steps (6.7s) stationary
+   - Extra Driving: first 38 steps (3.8s) stationary
+
+4. **LOW — Broken telemetry.** `MetricsCallback` requires `info["episode"]` which
+   only exists when the env is wrapped with `Monitor`. The env was NOT wrapped.
+   Both training summaries reported `episodes_completed: 0` and
+   `final_ep_rew_mean: null`.
+
+### 12.2 Fixes Applied (v2)
+
+| # | Bug | Fix | Test Added |
+|---|-----|-----|------------|
+| 1 | Ego-state distribution shift | Added `use_recorded_ego=True` mode: ego pos/speed/accel come from TX recording, matching validator exactly. RL action affects reward only (via deceleration), not observations. | `TestRecordedEgoMode` (6 tests) |
+| 2 | `braking_received` pre-cone-filter | Moved braking detection AFTER `filter_observable_peers()`. Now matches ConvoyEnv and validator. | `TestBrakingConeFilter` (2 tests) |
+| 3 | Episode start bias | Added `random_start=True` and `_pick_start_offset()` — skips stationary startup, randomizes into first half of recording. | `TestStartOffset` (3 tests) |
+| 4 | Broken telemetry | Wrapped env with `Monitor()` in `make_env()`. | Verified via `episodes_completed: 1007` in training summary |
+
+**New parameters on `ReplayConvoyEnv.__init__`:**
+```python
+use_recorded_ego: bool = False   # True → validator-matching obs pipeline
+random_start: bool = False       # True → skip stationary, randomize start
+```
+
+**New parameter on `run_replay_fine_tuning.py`:**
+```python
+--reset_log_std FLOAT   # Reset policy log_std before fine-tuning
+--use_kinematic_ego     # Use kinematic ego instead of recorded (default: recorded)
+```
+
+**Default fine-tuning now uses:** `use_recorded_ego=True`, `random_start=True`.
+
+### 12.3 v2 Fine-Tuning (fixes applied, no exploration reset)
+
+Run 024-v2: LR=3e-5, 500k steps, `use_recorded_ego=True`, `random_start=True`,
+Monitor-wrapped, cone-filtered braking.
+
+| Metric | Value |
+|---|---|
+| Training time | 9.4 min (894 FPS) |
+| Episodes completed | **1007** (was 0 in v1!) |
+| explained_variance | → 0.711 (critic alive) |
+| ep_rew_mean | -4530 → **-2120** (improving) |
+| Policy std | 0.064 → 0.067 |
+
+**Replay validation (v2):**
+
+| Recording | Sensitivity | FP Rate | vs Base 023 |
+|---|---|---|---|
+| Recording #2 | **8.0%** (2/25) | 12.53% | -4pp / +1pp |
+| Extra Driving | **8.7%** (2/23) | 21.21% | 0pp / -1pp |
+
+**Result: Fixes improved training health (critic alive, episodes counted,
+reward improving), but sensitivity did NOT improve.** The policy std was
+too tight (0.064) for the model to explore different actions.
+
+### 12.4 Exploration Analysis — The Tight Policy Problem
+
+Deep diagnostic on the v2 validation timeseries for Recording #2:
+
+```
+Steps with braking_received > 0.5: 279 / 1956 (14.3%)
+Steps with braking_received > 0.0: 1819 / 1956 (93.0%)
+
+Model action during braking_received > 0.5:
+  mean = 0.138, max = 0.982, min = 0.000
+
+Steps with action > 0.1: 226 / 1956 (11.6%)
+```
+
+**Event-by-event analysis of braking_received during validation windows:**
+
+| Event | real_accel | brk_recv (mean/max) | model_action (mean/max) | Status |
+|-------|-----------|---------------------|------------------------|--------|
+| 4 | -3.62 | **1.000/1.000** | 0.000/0.000 | MISSED |
+| 5 | -3.92 | 0.332/0.358 | 0.000/0.000 | MISSED |
+| 9 | -2.58 | 0.501/0.540 | 0.000/0.000 | MISSED |
+| 10 | -2.39 | 0.585/0.630 | 0.000/0.000 | MISSED |
+| 12 | -3.70 | **0.626/1.000** | 0.005/0.087 | MISSED |
+| 13 | -1.90 | 0.718/0.774 | 0.000/0.000 | MISSED |
+| 11 | -1.80 | 0.132/0.142 | 0.218/0.369 | DETECTED |
+| 16 | -1.81 | 0.015/0.017 | 0.065/0.246 | DETECTED |
+
+**Critical finding:** Events 4, 9, 10, 12, 13 all have `braking_received > 0.5`
+but the model outputs `action=0.000`. The SUMO-trained policy has
+`std=0.064`, meaning `P(action > 0.1 | mean=0) = P(z > 1.49) ≈ 6.8%`.
+The model literally CAN'T explore actions above the validation threshold.
+Fine-tuning with a tight policy can't discover that braking during hazard
+gives higher reward because it never tries.
+
+### 12.5 v3 Fine-Tuning (log_std reset for exploration)
+
+Run 024-v3: LR=1e-4, 1M steps, `reset_log_std=-1.0` (std: 0.064 → **0.368**),
+all v2 fixes applied.
+
+| Metric | Value |
+|---|---|
+| Training time | 19.3 min |
+| Episodes completed | 2007 |
+| ep_rew_mean | -4560 → **-1947** |
+| Policy std (before) | 0.064 |
+| Policy std (reset to) | **0.368** |
+
+**Replay validation (v3 final model):**
+
+| Recording | Sensitivity | FP Rate | vs Base 023 |
+|---|---|---|---|
+| Recording #2 | **72.0%** (18/25) | **68.20%** | **+60pp** / +57pp |
+| Extra Driving | **34.8%** (8/23) | 23.43% | **+26pp** / +2pp |
+
+**BREAKTHROUGH: Sensitivity jumped from 12% to 72% on Recording #2.**
+
+### 12.6 Checkpoint Sweep — Sensitivity/FP Tradeoff
+
+Validated all v3 checkpoints on Recording #2:
+
+| Checkpoint | Detection | FP | Sensitivity Δ vs Base | FP Δ vs Base |
+|---|---|---|---|---|
+| Base Run 023 | 12.0% | 11.3% | — | — |
+| v3 @ 200k | **24.0%** | 16.3% | +12pp | +5pp |
+| v3 @ 400k | **56.0%** | 48.3% | +44pp | +37pp |
+| v3 @ 600k | **44.0%** | 53.6% | +32pp | +42pp |
+| v3 @ 800k | **64.0%** | 59.9% | +52pp | +49pp |
+| v3 @ 1M | **72.0%** | 68.2% | +60pp | +57pp |
+
+Extra recording at 200k checkpoint: 13.0% detection / 21.0% FP (mild improvement).
+
+### 12.7 New Blocker — `braking_received` Persistence Causes FP Explosion
+
+**Root cause of high FP rate:**
+
+In real convoy recordings, `braking_received > 0.01` for **93% of all steps**.
+The slow decay (0.95/step, half-life ~1.35s) never fully drains between
+frequent normal traffic braking events. The `PENALTY_IGNORING_HAZARD` fires
+at threshold `braking_received > 0.01`, creating a persistent penalty of
+`-5.0 × braking_received` for NOT braking on 93% of steps.
+
+**Why this didn't happen in SUMO:**
+In SUMO training, hazards are injected in discrete windows (steps 150-350).
+Between hazards, no peers brake, so `braking_received` decays to ~0 and the
+ignoring penalty is dormant for most of the episode. In real convoy data,
+normal traffic produces frequent mild braking (peer accel crossing -2.5
+intermittently), keeping `braking_received` perpetually above the 0.01
+threshold.
+
+**Quantified impact:**
+- mean `braking_received` across recording: 0.168
+- Average ignoring penalty per step if NOT braking: -5.0 × 0.168 = **-0.84**
+- Over 500 steps per episode: cumulative penalty ≈ **-390** for not braking
+- This makes always-braking the rational policy, explaining the 68% FP rate
+
+**This is a reward design issue, NOT a bug.** The reward was designed for
+SUMO's clean on/off hazard signal, not real-world persistent braking activity.
+
+### 12.8 Current Status & Recommended Next Steps
+
+**What works:**
+- All 4 code bugs fixed and tested (38 replay env tests passing)
+- Recorded-ego mode eliminates obs distribution shift
+- Log_std reset enables exploration → 72% sensitivity achieved (first time ever)
+- Infrastructure is solid: Monitor telemetry, random start, checkpointing
+
+**What needs fixing:**
+- FP rate is too high (68% at 72% sensitivity, 16% at 24% sensitivity)
+- The 200k checkpoint (24% detection / 16% FP) is the best balanced result
+  but still below the Section 9.1 target of >40% detection / <15% FP
+
+**Recommended approaches for the next session (pick one):**
+
+1. **Raise ignoring-penalty threshold for replay mode.** Change the condition from
+   `braking_received > 0.01` to `braking_received > 0.3` or `0.5` when training
+   on replay data. This ensures the penalty only fires during actual strong braking
+   events, not the persistent low-level signal. Could be a `ReplayRewardCalculator`
+   subclass or a parameter on `RewardCalculator`.
+
+2. **Faster braking decay for replay mode.** Change `BRAKING_DECAY` from 0.95 to
+   0.80 in `ReplayConvoyEnv` (half-life 0.3s instead of 1.35s). The signal drains
+   faster between events. Downside: must also match in validation script.
+
+3. **Binary braking signal (no decay).** Use `braking_received_mode="instant"` where
+   `braking_received = 1.0` only on steps where a peer is currently below -2.5 m/s²,
+   0.0 otherwise. No decay tail. The ignoring penalty only fires on steps with
+   active V2V braking signal.
+
+4. **Tune log_std reset + training length more carefully.** The 200k checkpoint
+   showed 24% / 16% — try `reset_log_std=-1.5` (std=0.22, less aggressive
+   exploration) and 300-400k steps. May find a better tradeoff without reward changes.
+
+**Files to modify for approaches 1-3:**
+- `ml/envs/replay_convoy_env.py` — braking detection / decay logic
+- `ml/envs/reward_calculator.py` (or subclass) — ignoring penalty threshold
+- `ml/scripts/run_replay_fine_tuning.py` — new CLI flags
+- `ml/scripts/validate_against_real_data.py` — must match if decay changes
+
+**Results directory:**
+```
+ml/results/
+├── run_024_replay/        # v1 (LR=1e-5, pre-fix)
+├── run_024_replay_v2/     # v2 (4 fixes, LR=3e-5, no log_std reset)
+│   ├── baseline/          # Run 023 baseline validation for comparison
+│   └── validation/        # v2 validation reports
+└── run_024_replay_v3/     # v3 (4 fixes + log_std=-1.0, LR=1e-4, 1M)
+    ├── checkpoints/       # 50k-1M step checkpoints (20 files)
+    └── validation/        # v3 validation + checkpoint sweep reports
+```

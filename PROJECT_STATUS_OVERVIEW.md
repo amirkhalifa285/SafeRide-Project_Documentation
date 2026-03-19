@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 16, 2026 (Run 022 complete — SUMO pass / replay fail; Run 023 implementation plan drafted)
+**Last Updated:** March 19, 2026 (Run 024 root cause investigation complete — 4 bugs fixed — sensitivity 12%→72% — FP regression identified)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: RUN 022 COMPLETE — SUMO PASS / REPLAY FAIL; RUN 023 IMPLEMENTATION PLANNING
+## CURRENT PHASE: RUN 024 BREAKTHROUGH — 72% SENSITIVITY ACHIEVED — FP REGRESSION BLOCKS DEPLOYMENT
 
 ```
 ================================================================================
@@ -57,14 +57,14 @@
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ► RUN 022 COMPLETE — ego heading removed from observation (2M diagnostic)
-  ✅ SUMO cleared the minimum bar: ~64.4% weighted V2V reaction, 0 collisions,
-     98.55% behavioral success, peer counts n=1..5 covered
-  ✅ Heading removal fixed the Run 021 false-positive catastrophe
-  ❌ Recording #2 replay still FAILS: 12.0% sensitivity / 2.55% false positives
-  ❌ Extra Driving replay still FAILS: 26.1% sensitivity / 4.58% false positives
-  ❌ Conclusion: Run 022 is not promotable; sensitivity recovery remains unsolved
-  ► NEXT: Run 023 implementation — state-triggered hazard onset on `base_real`
+  ► RUN 024 BREAKTHROUGH — 72% sensitivity achieved via replay fine-tuning
+  ✅ Root cause: 4 bugs in ReplayConvoyEnv (ego shift, pre-cone braking, start bias, telemetry)
+  ✅ Exploration fix: log_std reset from -2.7 (std=0.064) to -1.0 (std=0.37)
+  ✅ Detection 12% → 72% on Recording #2 (best checkpoint: 1M steps)
+  ❌ FP rate 11.3% → 68.2% — scales linearly with sensitivity
+  ❌ Root cause: braking_received persistence (93% of steps > 0.01 threshold)
+  ❌ Best balanced checkpoint: 200k (24% detection / 16% FP) — below target
+  ► NEXT: Reward adaptation for replay fine-tuning (>40% detection / <15% FP target)
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
   ✅ H5 SIM-TO-REAL VALIDATION COMPLETE (March 10, 2026):
@@ -306,6 +306,43 @@ CURRENT STATUS:
      - Decision: do NOT promote to 10M, keep heading removed, draft Run 023 around
        sensitivity recovery without route-coded features
      - See: docs/10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md
+  ✅ RUN 023 COMPLETE — SUMO IMPROVED / REPLAY WORSE (March 17, 2026):
+     - 2M diagnostic with state-triggered hazard onset (H1) + max_closing_speed (H2)
+     - SUMO results:
+       ✅ Weighted V2V reaction ≈ 85% (+20pp over Run 022)
+       ✅ avg_reward=+416.94, 0% collisions, 98.55% behavioral success
+     - Real-data replay results:
+       ❌ Recording #2 = 12.0% sensitivity / 11.28% FP (WORSE FP than Run 022)
+       ❌ Extra Driving = 8.7% sensitivity / 21.76% FP (WORSE on all metrics)
+     - Interpretation: state-bucket broadened SUMO training diversity but domain gap
+       is architectural — SUMO improvements do not transfer to real sensor data
+     - Decision: move to Run 024 (real-data fine-tuning via ReplayConvoyEnv)
+  ► RUN 024 — REPLAY FINE-TUNING BREAKTHROUGH (March 19, 2026):
+     - ReplayConvoyEnv built: replays real peer CSVs with recorded/kinematic ego
+     - Shares ObservationBuilder + RewardCalculator with ConvoyEnv (identical obs/action spaces)
+     - ROOT CAUSE INVESTIGATION COMPLETE — 4 bugs found and fixed:
+       1. Ego distribution shift: ReplayConvoyEnv used kinematic ego, validator used recorded
+          ego positions. Added `use_recorded_ego=True` mode (matches validator exactly).
+       2. Pre-cone braking detection: braking detected on ALL peers before cone filter.
+          ConvoyEnv and validator both detect AFTER cone filter. Fixed to match.
+       3. Episode start bias: recordings start with 20+ stationary steps (ego speed=0).
+          Added `random_start=True` + stationary-skip logic.
+       4. Broken telemetry: MetricsCallback got no episode stats. Added Monitor wrapper.
+     - EXPLORATION FIX: SUMO-trained model std=0.064 (P(action>0.1)≈7%). Added
+       `--reset_log_std -1.0` option to reset std to 0.37 before fine-tuning.
+     - RESULTS:
+       | Model              | Detection (Rec02) | FP (Rec02)  |
+       | Base Run 023       | 12.0%             | 11.3%       |
+       | v2 (fixes, no std) | 8.0%              | 12.5%       |
+       | v3 @ 200k steps    | 24.0%             | 16.3%       |
+       | v3 @ 400k steps    | 56.0%             | 48.3%       |
+       | v3 @ 1M steps      | **72.0%**         | 68.2%       |
+     - 38 unit tests (11 new), 389 total passing
+     - BLOCKED: FP rate scales with sensitivity. braking_received > 0.01 for 93%
+       of steps in real recordings (slow decay 0.95/step). PENALTY_IGNORING_HAZARD
+       fires almost always → "always brake" is rational → FP explosion.
+     - NEXT: Reward adaptation for replay mode (4 approaches documented in plan §12.8)
+     - See: docs/10_PLANS_ACTIVE/RUN_024_REPLAY_CONVOY_ENV_PLAN.md (Section 12)
 
 COMPLETED BLOCKERS:
   1. ✅ EVAL SCENARIO GEOMETRY — FIXED
@@ -335,13 +372,21 @@ NEXT STEPS (in order):
      is spurious — caused 93.83% FP on Extra Driving
   9. ✅ Run 022 complete (heading removed — ego 6→5 dim, features_dim 38→37)
      Result: false positives fixed, but replay sensitivity still too low for promotion
-  10. ► Run 023 implementation
-      Concrete plan: keep `base_real`, use state-triggered hazard onset before adding new inputs
-  11. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
-  12. ○ Deploy on ESP32
-  13. ○ Professor PoC demo
+  10. ✅ Run 023 complete (state-triggered onset + max_closing_speed)
+      Result: SUMO reaction +20pp (85%) but replay WORSE on all metrics
+  11. ✅ Run 024 ReplayConvoyEnv implemented + first fine-tuning attempts
+      Result: code works, PPO trains, but replay sensitivity unchanged at 12%/8.7%
+  12. ✅ Run 024 root cause investigation — 4 bugs fixed, sensitivity 12%→72%
+      But FP rate 11.3%→68.2% — braking_received persistence causes FP explosion
+  13. ► Run 024 reward adaptation for replay mode
+      Need to fix braking_received threshold / reward gating for real-data dynamics
+      Target: >40% detection / <15% FP on Recording #2
+  14. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
+  15. ○ Deploy on ESP32
+  16. ○ Professor PoC demo
 
 KEY DOCUMENTS:
+  - **Run 024 Plan + Progress:** 10_PLANS_ACTIVE/RUN_024_REPLAY_CONVOY_ENV_PLAN.md
   - **Run 022 Postmortem:** 10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md
   - **Run 023 Implementation Plan:** 10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md
   - **Run 023 Hypothesis Set:** 10_PLANS_ACTIVE/RUN_023_HYPOTHESIS_SET.md
@@ -455,8 +500,8 @@ COMPLETED (Runs 001-020 + All Architecture)        NOW: SENSITIVITY RECOVERY
   ❌ Extra replay: 17.4% sensitivity / 7.72% FP
   ❌ Not promotable to 10M; next focus is sensitivity recovery
 
-CURRENT FOCUS: Run 023 implementation → recover replay sensitivity without route memorization
-               → preserve Run 022 low-FP gains while lifting both recordings through the replay gate
+CURRENT FOCUS: Run 024 reward adaptation → fix braking_received FP explosion in replay fine-tuning
+               → target >40% detection / <15% FP on Recording #2 → then quantize + deploy
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Runs 012-016: gradual slowDown signal too weak for critic (5 consecutive failures)
   ✅ Run 017: 5 structural fixes still failed — warmup contamination found & fixed
@@ -512,6 +557,8 @@ CURRENT FOCUS: Run 023 implementation → recover replay sensitivity without rou
 | **020** | **+691.62** | **100%** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **2M diagnostic with deployment-compatible observation semantics: critic healthy (`explained_variance` 0.961 near 500k, 0.925 near end), 276/276 SUMO reactions, 0% collisions, 98.55% behavioral success. Real-data replay removed the catastrophic false positives but collapsed sensitivity: Recording #2 = 12.0% / 6.07%, Extra = 17.4% / 7.72%. Do not promote to 10M or deploy.** |
 | **021** | **+368.00** | **95.3%** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **Hazard decel randomization + resolved-hazard episodes improved replay sensitivity, but ego heading became a spurious route-position proxy. Recording #2 = 40.0% / 19.16%, Extra = 91.3% / 93.83%. Do not promote.** |
 | **022** | **+440.59** | **64.4%*** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **Heading removed (ego 6→5 dim, features_dim 38→37). Final eval still cleared the 2M SUMO gate: ~64.4% weighted reaction from `source_reaction_summary`, 0% collisions, 98.55% behavioral success, n=1..5 covered. Replay fixed specificity but not sensitivity: Recording #2 = 12.0% / 2.55%, Extra = 26.1% / 4.58%. Keep heading removed, but do not promote to 10M.** |
+| **023** | **+416.94** | **~85%** | **COMPLETE — SUMO IMPROVED / REPLAY WORSE** | **State-triggered onset (H1) + max_closing_speed (H2). SUMO +20pp over Run 022 (85% vs 64.4%), 0% collisions, 98.55% behavioral success. Replay WORSE: Rec#2 = 12.0% / 11.28% FP, Extra = 8.7% / 21.76% FP. Domain gap is architectural, not diversity-limited.** |
+| **024** | N/A | N/A | **BREAKTHROUGH — 72% SENSITIVITY / FP REGRESSION** | **Root cause investigation found 4 bugs (ego distribution shift, pre-cone braking, episode start bias, broken telemetry). All fixed + log_std reset for exploration. v3 fine-tuning (LR=1e-4, 1M steps, log_std=-1.0) achieved 72.0% detection on Rec#2 (was 12.0%). But FP rate exploded to 68.2% (was 11.3%). Root cause: braking_received > 0.01 for 93% of steps in real data → PENALTY_IGNORING_HAZARD fires almost always → "always brake" is rational. Best balanced: 200k checkpoint (24%/16%). BLOCKED on reward adaptation for replay mode. 38 env tests, 389 total passing.** |
 
 \* Run 022's `metrics.json` does not store one top-level overall reaction field; `64.4%` is the weighted aggregate reconstructed from `source_reaction_summary`.
 
