@@ -1,7 +1,7 @@
 # Run 024 — ReplayConvoyEnv: Real-Data Fine-Tuning
 
-**Status:** ROOT CAUSE INVESTIGATION COMPLETE — 4 BUGS FIXED — SENSITIVITY 12%→72% ACHIEVED — FP REGRESSION IDENTIFIED — REWARD ADAPTATION NEEDED
-**Date:** 2026-03-19 (updated after root cause investigation + v2/v3 fine-tuning)
+**Status:** ROOT CAUSE INVESTIGATION COMPLETE — 4 BUGS FIXED — SENSITIVITY 12%→72% ACHIEVED — REPLAY REWARD GATING TESTED — FP IMPROVED BUT SENSITIVITY COLLAPSED
+**Date:** 2026-03-19 (updated after replay reward-gating diagnostic run)
 **Author:** Amir + Claude
 
 ---
@@ -980,3 +980,334 @@ ml/results/
     ├── checkpoints/       # 50k-1M step checkpoints (20 files)
     └── validation/        # v3 validation + checkpoint sweep reports
 ```
+
+### 12.9 Replay Reward-Gating Fix Implemented (March 19, 2026)
+
+Implemented the approved replay-only fix instead of changing observation
+semantics again.
+
+**Design now in code:**
+- `ReplayConvoyEnv` defaults to a replay reward config where:
+  - `early_reaction_threshold = 0.01` (unchanged, stays loose)
+  - `ignoring_hazard_threshold = 0.3`
+  - `ignoring_require_danger_geometry = True`
+  - `ignoring_danger_distance = 20.0m`
+  - `ignoring_danger_closing_rate = 0.5 m/s`
+  - `ignoring_use_any_braking_peer = True`
+- `RewardCalculator` now supports separate gates for:
+  - early-reaction bonus
+  - ignoring-hazard penalty
+- The tightened ignoring penalty now requires:
+  - strong/fresh braking evidence: `braking_received >= 0.3` OR `any_braking_peer`
+  - dangerous geometry: `closing_rate > 0.5` OR `distance < 20m`
+- Fresh active braking uses `any_braking_peer` to force full signal strength
+  (`max(braking_received, 1.0)`) so a new hazard is not missed on the first step.
+- `ConvoyEnv` / SUMO behavior is unchanged because `RewardCalculator` defaults
+  still preserve the old gating when no replay config is supplied.
+- `validate_against_real_data.py` was intentionally NOT changed. This is a
+  training-objective fix, not an observation-pipeline fix.
+
+**Files changed:**
+- `roadsense-v2v/ml/envs/reward_calculator.py`
+- `roadsense-v2v/ml/envs/replay_convoy_env.py`
+- `roadsense-v2v/ml/scripts/run_replay_fine_tuning.py`
+- `roadsense-v2v/ml/tests/unit/test_reward_calculator.py`
+- `roadsense-v2v/ml/tests/unit/test_replay_convoy_env.py`
+
+**Targeted verification completed:**
+- `pytest tests/unit/test_reward_calculator.py tests/unit/test_replay_convoy_env.py`
+  - Result: **100/100 passed**
+- `python -m py_compile envs/reward_calculator.py envs/replay_convoy_env.py scripts/run_replay_fine_tuning.py`
+  - Result: passed
+
+**Recommended first diagnostic run:**
+```bash
+cd /home/amirkhalifa/RoadSense2/roadsense-v2v/ml
+source venv/bin/activate
+
+python -m scripts.run_replay_fine_tuning \
+  --model_path models/runs/cloud_prod_023/model_final.zip \
+  --vecnormalize_path models/runs/cloud_prod_023/vecnormalize.pkl \
+  --recordings_dir data/recordings \
+  --output_dir results/run_024_replay_v4_reward_gate \
+  --total_timesteps 300000 \
+  --learning_rate 1e-4 \
+  --reset_log_std -1.0 \
+  --ignore_hazard_threshold 0.3 \
+  --ignore_danger_distance 20.0 \
+  --ignore_danger_closing_rate 0.5
+```
+
+**Success criteria for this diagnostic:**
+- Recording #2: beat the old 200k tradeoff (`24% / 16.3%`)
+- Target gate: `>40%` detection and `<15%` FP
+- Extra Driving: keep FP at or below the low-20s and preferably under `20%`
+- SUMO regression check remains required before any promotion decision
+
+### 12.10 Reward-Gating Diagnostic Result (Run 024-v4, March 19, 2026)
+
+Ran the first replay-only reward-gating diagnostic exactly as planned:
+- `300k` steps
+- `learning_rate=1e-4`
+- `reset_log_std=-1.0`
+- recorded ego + random start
+- replay reward config:
+  - `ignoring_hazard_threshold=0.3`
+  - `ignoring_danger_distance=20.0`
+  - `ignoring_danger_closing_rate=0.5`
+  - `ignoring_use_any_braking_peer=True`
+  - `early_reaction_threshold=0.01`
+
+**Training summary:**
+- episodes completed: `606`
+- final `ep_rew_mean`: `-2029.3`
+- training time: `5.4 min`
+
+**Replay validation results (decay mode, unchanged validator):**
+
+| Model | Recording #2 | Extra Driving |
+|---|---|---|
+| Base Run 023 | 12.0% det / 11.3% FP | 8.7% det / 21.8% FP |
+| Run 024-v3 @ 200k | 24.0% det / 16.3% FP | 13.0% det / 21.0% FP |
+| Run 024-v3 @ 1M | 72.0% det / 68.2% FP | 34.8% det / 23.4% FP |
+| **Run 024-v4 reward gate @ 300k** | **8.0% det / 12.41% FP** | **13.0% det / 19.60% FP** |
+
+**Interpretation:**
+- The replay-only reward gate did what it was designed to do on specificity:
+  - Recording #2 FP dropped from the v3 frontier (`16.3%-68.2%`) down to `12.41%`
+  - Extra Driving FP improved to `19.60%`, the first sub-20% result since this
+    replay fine-tuning line began
+- But it over-corrected. Recording #2 sensitivity collapsed to `8.0%`, worse than
+  the base Run 023 replay (`12.0%`) and far below the v3 200k checkpoint (`24.0%`)
+- Extra Driving sensitivity was only `13.0%`, also far below any promotable target
+
+**Conclusion:**
+- This exact reward gate is **too strict**. It removes the FP explosion, but it
+  also removes the incentive that unlocked the 72% sensitivity breakthrough.
+- The fix should be treated as a negative result, not the new default frontier.
+
+**Best next iteration from this result:**
+1. Keep the split-gate architecture.
+2. Relax the ignoring penalty instead of reverting to the old reward:
+   - try `ignoring_hazard_threshold=0.2`
+   - try `ignoring_danger_distance=25.0`
+   - keep `ignoring_use_any_braking_peer=True`
+3. Keep `early_reaction_threshold=0.01` unchanged.
+4. Run short sweeps (`200k-300k`) before any longer fine-tune.
+
+### 12.11 Why Geometry Gating Is Structurally Broken — v4 Root Cause (March 19, 2026)
+
+Post-hoc analysis of v4's failure revealed that the problem is **not threshold
+strictness**. The geometry gate (`distance < 20 OR closing_rate > 0.5`) is
+fundamentally unreliable in `use_recorded_ego=True` mode.
+
+#### The structural issue
+
+In recorded-ego mode, `distance` and `closing_rate` passed to
+`RewardCalculator.calculate()` are computed from the **recorded human
+trajectory** (see `replay_convoy_env.py:293-296`). During real braking events
+in the recording, the human driver braked and maintained safe following distance.
+This means:
+
+- `distance` during actual hazards is typically still >20m (human kept distance)
+- `closing_rate` during hazards is often <0.5 m/s (human was already decelerating)
+
+The geometry gate `(distance < 20 OR closing_rate > 0.5)` therefore rarely fires
+during hazard windows — because **the human's reaction masks the danger
+geometry**. The `any_braking_peer` OR-path (6.5% of steps) partially
+compensates, but is too sparse alone.
+
+The v4 gate effectively reduced the ignoring penalty's firing rate from ~28%
+(brk > 0.3 alone) to perhaps ~5-8% (after geometry filtering), which was too
+little training signal.
+
+#### Evidence from timeseries cross-comparison
+
+All measured on Recording #2 (1956 steps, braking_received identical across
+models since it derives from the CSV data, not model actions):
+
+| Model | brk>0.3: act>0.1 | calm: act>0.1 | Sensitivity | FP |
+|---|---|---|---|---|
+| V3 200k (best balanced) | **46.1%** | 2.8% | 24.0% | 16.3% |
+| V3 1M (sensitivity peak) | 79.5% | **65.6%** | 72.0% | 68.2% |
+| V4 300k (geometry gate) | 34.7% | 2.5% | 8.0% | 12.4% |
+
+Key observations:
+
+1. **V3 200k and V4 have nearly identical calm behavior** (2.8% vs 2.5% action
+   rate when `braking_received < 0.01`). Specificity is not the problem.
+2. **V4 barely responds to braking signals** (34.7% action rate when
+   `braking_received > 0.3`, vs V3 200k's 46.1%). The geometry gate suppressed
+   the training signal during actual hazard windows.
+3. **V3's specificity collapse (2.8% → 65.6%) happens between 200k and 1M**,
+   driven by the ignoring penalty firing on 48.5% of steps. The model gradually
+   learns "always brake" to avoid the cumulative penalty.
+
+#### Why a threshold sweep alone won't fix this
+
+Relaxing to `distance < 25` or `closing_rate > 0.3` marginally increases the
+geometry gate's firing rate but does not fix the structural mismatch. The human
+trajectory still masks danger geometry at moderate thresholds. The gate will
+still suppress most hazard-window steps, producing a similar sensitivity collapse.
+
+#### `braking_received` frequency at various thresholds
+
+| Threshold | Steps firing | % of 1956 |
+|-----------|-------------|-----------|
+| > 0.0 (any nonzero) | 1819 | 93.0% |
+| > 0.01 (v3 gate) | 949 | **48.5%** |
+| > 0.1 | 564 | 28.8% |
+| > 0.15 | ~500 | ~25-28%* |
+| > 0.2 | 447 | 22.9% |
+| > 0.3 (v4 gate) | 375 | 19.2% |
+| > 0.5 | 279 | 14.3% |
+
+\*interpolated
+
+`any_braking_peer` fires on 128/1956 steps (6.5%) — this is the instantaneous
+signal before decay.
+
+### 12.12 Run 024-v5 Plan: Threshold-Only Gate + LR Decay (March 19, 2026)
+
+**Approach:** Drop the geometry gate entirely. Use braking_received threshold
+only, with LR annealing to prevent the specificity collapse observed in v3.
+
+**Reward config:**
+```python
+reward_config = {
+    "early_reaction_threshold": 0.01,           # unchanged — keep loose for bonus
+    "ignoring_hazard_threshold": 0.15,           # fires on ~28% of steps (was 0.01→48.5%, was 0.3→19.2%)
+    "ignoring_require_danger_geometry": False,    # DROP — broken in recorded-ego mode
+    "ignoring_use_any_braking_peer": True,        # keep — adds 6.5% instantaneous signal
+    "ignoring_danger_distance": 20.0,             # unused when geometry=False
+    "ignoring_danger_closing_rate": 0.5,          # unused when geometry=False
+}
+```
+
+**Training config:**
+```bash
+python -m scripts.run_replay_fine_tuning \
+  --model_path models/runs/cloud_prod_023/model_final.zip \
+  --vecnormalize_path models/runs/cloud_prod_023/vecnormalize.pkl \
+  --recordings_dir data/recordings \
+  --output_dir results/run_024_replay_v5_threshold_only \
+  --total_timesteps 1000000 \
+  --learning_rate 1e-4 \
+  --lr_schedule linear \
+  --reset_log_std -1.0 \
+  --ignore_hazard_threshold 0.15 \
+  --no_ignore_danger_geometry
+```
+
+**Why this should work:**
+
+1. **Threshold 0.15 reduces penalty frequency by ~40%** (from 48.5% at 0.01 to
+   ~28% at 0.15). The 0.01–0.15 range is pure decay tail from normal traffic —
+   removing it from the penalty eliminates the strongest driver of
+   "always-brake" convergence.
+
+2. **No geometry gate avoids the recorded-ego masking problem.** The penalty
+   fires based on the braking signal alone, which is reliable in both
+   training and validation.
+
+3. **LR annealing (linear decay 1e-4 → 1e-5)** stabilizes the policy after
+   initial learning. V3 200k had 16:1 selectivity (46% action during braking,
+   2.8% during calm). The specificity collapsed by 1M at constant LR. Decaying
+   LR should preserve discrimination while allowing continued sensitivity gain.
+
+4. **1M steps with checkpoints every 50k** enables a full sweep to find the
+   optimal sensitivity/FP tradeoff point.
+
+**Expected outcome:**
+- The sensitivity/FP curve should be flatter than v3's (slower FP growth per
+  unit of sensitivity) because the penalty stops firing on the low-decay-tail
+  steps (0.01–0.15).
+- Combined with LR annealing, the sweet spot should shift toward higher
+  sensitivity at similar FP — plausibly 35-45% sensitivity at 12-18% FP.
+- The 50k checkpoint granularity will reveal the exact tradeoff curve.
+
+**Success criteria:**
+- Beat v3 200k (24% det / 16% FP) on Pareto dominance
+- Target: >40% detection / <15% FP on Recording #2
+- Extra Driving FP should stay below 25%
+
+**Escalation if v5 fails:**
+If threshold-only gating still can't break the sensitivity/FP coupling, the next
+approach is **shadow kinematic ego for reward geometry**:
+- Keep recorded ego for observations (matching validator exactly)
+- Run `EgoKinematics` in parallel to compute counterfactual `distance` and
+  `closing_rate` — reflecting what WOULD happen if the model's action were
+  applied
+- Use counterfactual geometry for the reward gate
+
+This fixes the structural issue: the shadow ego's geometry reflects the model's
+actions (not the human's), so dangerous geometry appears when the model fails to
+brake. Implementation requires running both ego models in `step()` and passing
+shadow geometry to `RewardCalculator`.
+
+### 12.13 Run 024-v6 Plan: Shadow Reward Geometry (March 19, 2026)
+
+**Decision:** After reviewing the v5 results against the production goal
+(Recording #2 hard-brake response), we are taking **Option B next**, not Option A.
+The reason is pragmatic: v5 already showed the threshold-only reward still hits
+the same sensitivity/FP coupling, while the earlier H5 analysis showed the
+policy naturally responds to geometry once it becomes causally meaningful.
+
+**Implementation completed locally:**
+- `ReplayConvoyEnv` now accepts `use_shadow_reward_geometry=True`
+- When enabled with `use_recorded_ego=True`:
+  - observations still use the recorded ego state exactly
+  - reward `distance`, `closing_rate`, and `ego_speed` come from a shadow
+    `EgoKinematics` rollout driven by the policy action
+  - info telemetry now includes both recorded and reward geometry:
+    `recorded_distance`, `reward_distance`, `recorded_closing_rate`,
+    `reward_closing_rate`, `reward_geometry_source`
+- `run_replay_fine_tuning.py` now exposes `--use_shadow_reward_geometry`
+- Regression tests verify:
+  - recorded ego observations stay unchanged under shadow mode
+  - the ignoring penalty changes when the shadow ego brakes vs does not brake
+
+**300k probe config (selected):**
+```bash
+cd /home/amirkhalifa/RoadSense2/roadsense-v2v
+source ml/venv/bin/activate
+python -m ml.scripts.run_replay_fine_tuning \
+  --model_path ml/models/runs/cloud_prod_023/model_final.zip \
+  --vecnormalize_path ml/models/runs/cloud_prod_023/vecnormalize.pkl \
+  --recordings_dir ml/data/recordings \
+  --output_dir ml/results/run_024_replay_v6_shadow_geometry_300k \
+  --total_timesteps 300000 \
+  --learning_rate 1e-4 \
+  --final_learning_rate 1e-5 \
+  --reset_log_std -1.0 \
+  --ignore_hazard_threshold 0.15 \
+  --ignore_require_danger_geometry \
+  --use_shadow_reward_geometry
+```
+
+**Why this v6 config is the right next probe:**
+1. Keeps the deployed observation contract unchanged.
+2. Restores geometry as a causal reward signal instead of a human-masked one.
+3. Retains v5's best FP-control tool (`LR` decay).
+4. Uses a short 300k run as a cheap proof test before another long sweep.
+
+**Results directory:**
+```
+ml/results/
+├── run_024_replay/                    # v1 (LR=1e-5, pre-fix)
+├── run_024_replay_v2/                 # v2 (4 fixes, LR=3e-5, no log_std reset)
+├── run_024_replay_v3/                 # v3 (4 fixes + log_std=-1.0, LR=1e-4, 1M)
+├── run_024_replay_v4_reward_gate/     # v4 (split-gate: brk≥0.3 + geometry — TOO STRICT)
+├── run_024_replay_v5_threshold_only/  # v5 (threshold 0.15, no geometry, LR decay)
+└── run_024_replay_v6_shadow_geometry_300k/  # v6 probe (shadow reward geometry)
+```
+
+**Outcome note (same day):**
+- The v6 300k probe was run after implementation.
+- Result: **FAILED** — best Recording #2 checkpoint was only `16.0% / 15.5%`
+  at `150k`; final `300k` regressed to `0.0% / 4.9%`.
+- The strongest real brake in Recording #2 (`-8.63 m/s²`) still did not produce
+  a meaningful model response: best checkpoint `150k` peaked at action `0.147`
+  (`~1.17 m/s²`), final `300k` was `0.0`.
+- Full details captured in:
+  `docs/10_PLANS_ACTIVE/RUN_024_V6_SHADOW_GEOMETRY_300K_RESULTS.md`

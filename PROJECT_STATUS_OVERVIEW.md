@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 19, 2026 (Run 024 root cause investigation complete — 4 bugs fixed — sensitivity 12%→72% — FP regression identified)
+**Last Updated:** March 19, 2026 (Run 025 — Temporal Ego Stack launched on EC2)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: RUN 024 BREAKTHROUGH — 72% SENSITIVITY ACHIEVED — FP REGRESSION BLOCKS DEPLOYMENT
+## CURRENT PHASE: RUN 025 — TEMPORAL EGO STACK — LAUNCHED ON EC2
 
 ```
 ================================================================================
@@ -57,14 +57,31 @@
      Always use --forward-axis y with analyze_convoy_recording.py
 
 CURRENT STATUS:
-  ► RUN 024 BREAKTHROUGH — 72% sensitivity achieved via replay fine-tuning
+  ✅ RUN 024 CONCLUDED — ALL VARIANTS HIT DISCRIMINATION CEILING (March 19, 2026)
   ✅ Root cause: 4 bugs in ReplayConvoyEnv (ego shift, pre-cone braking, start bias, telemetry)
   ✅ Exploration fix: log_std reset from -2.7 (std=0.064) to -1.0 (std=0.37)
-  ✅ Detection 12% → 72% on Recording #2 (best checkpoint: 1M steps)
-  ❌ FP rate 11.3% → 68.2% — scales linearly with sensitivity
-  ❌ Root cause: braking_received persistence (93% of steps > 0.01 threshold)
-  ❌ Best balanced checkpoint: 200k (24% detection / 16% FP) — below target
-  ► NEXT: Reward adaptation for replay fine-tuning (>40% detection / <15% FP target)
+  ✅ Detection 12% → 72% on Recording #2 (v3 @ 1M steps)
+  ❌ FP rate 11.3% → 68.2% in v3 — scales linearly with sensitivity
+  ❌ v4 geometry gate FAILED: 8.0% det / 12.4% FP (geometry broken in recorded-ego mode)
+  ✅ v5 best: 150k = 32.0% det / 16.6% FP (Pareto stalled, can't go higher w/o FP blowup)
+  ❌ v6 shadow geometry FAILED: 150k = 16.0% det / 15.5% FP (too conservative)
+  ❌ ROOT CAUSE: single-timestep ego (6-dim) cannot discriminate hazard onset from
+     stale braking decay. Reward shaping CANNOT fix this — the observation space
+     lacks discriminative power.
+
+  ► RUN 025 — TEMPORAL EGO STACK — LAUNCHED ON EC2 (March 19, 2026)
+  ✅ Code: ego_stack_frames=3 → [ego_t, ego_{t-1}, ego_{t-2}] = 18-dim (was 6-dim)
+  ✅ DeepSetExtractor features_dim: 38 → 50 (32 embed + 18 ego)
+  ✅ Files: replay_convoy_env, convoy_env, deep_set_policy, train_convoy,
+     run_replay_fine_tuning, validate_against_real_data, run_training.sh
+  ✅ 19 new tests (test_ego_stack.py), 426 unit + 20 integration passing
+  ✅ Backward compatible: ego_stack_frames=1 (default) = identical to Run 024
+  ✅ Fresh SUMO training (no weight transfer — obs dim change breaks checkpoints)
+  ✅ EC2: cloud_prod_025, 2M steps, ego_stack_frames=3, state-triggered eval
+  ► WAITING: EC2 SUMO training to complete
+  ► THEN: replay fine-tune with --ego_stack_frames 3 --use_recorded_ego --reset_log_std -1.0
+  ► TARGET: >40% detection AND <15% FP on Recording #2
+  ► IF CEILING HOLDS: escalate to kinematic ego training (action-dependent observations)
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
   ✅ H5 SIM-TO-REAL VALIDATION COMPLETE (March 10, 2026):
@@ -341,7 +358,20 @@ CURRENT STATUS:
      - BLOCKED: FP rate scales with sensitivity. braking_received > 0.01 for 93%
        of steps in real recordings (slow decay 0.95/step). PENALTY_IGNORING_HAZARD
        fires almost always → "always brake" is rational → FP explosion.
-     - NEXT: Reward adaptation for replay mode (4 approaches documented in plan §12.8)
+     - FIX IMPLEMENTED: replay-only reward gating
+       now keeps early-reaction loose but tightens ignoring-hazard to require
+       strong/fresh braking evidence (`braking_received >= 0.3` OR any_braking_peer)
+       AND dangerous geometry (`closing_rate > 0.5` OR `distance < 20m`).
+       SUMO reward defaults remain unchanged.
+     - Targeted verification complete: replay reward + env unit suite 100/100 passing,
+       plus py_compile on runtime files.
+     - REPLAY REWARD-GATE DIAGNOSTIC RESULT (`300k`, `log_std=-1.0`):
+       Recording #2 = 8.0% sensitivity / 12.41% FP
+       Extra Driving = 13.0% sensitivity / 19.60% FP
+     - INTERPRETATION: specificity improved but the gate over-corrected and
+       killed the sensitivity breakthrough. Keep split-gate architecture, but
+       relax thresholds next (`ignore_threshold≈0.2`, `danger_distance≈25m`).
+     - NEXT: threshold sweep around the replay-only ignoring gate
      - See: docs/10_PLANS_ACTIVE/RUN_024_REPLAY_CONVOY_ENV_PLAN.md (Section 12)
 
 COMPLETED BLOCKERS:
@@ -378,14 +408,22 @@ NEXT STEPS (in order):
       Result: code works, PPO trains, but replay sensitivity unchanged at 12%/8.7%
   12. ✅ Run 024 root cause investigation — 4 bugs fixed, sensitivity 12%→72%
       But FP rate 11.3%→68.2% — braking_received persistence causes FP explosion
-  13. ► Run 024 reward adaptation for replay mode
-      Need to fix braking_received threshold / reward gating for real-data dynamics
-      Target: >40% detection / <15% FP on Recording #2
-  14. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
-  15. ○ Deploy on ESP32
-  16. ○ Professor PoC demo
+  13. ✅ Run 024-v4 reward gate diagnostic — FAILED (March 19, 2026)
+      Split-gate (brk≥0.3 + geometry) reduced FP but killed sensitivity: 8%/12%
+      Root cause: geometry gate structurally broken in recorded-ego mode —
+      human driver's reactions mask danger (distance stays safe, closing_rate low)
+  14. ✅ Run 024-v5 threshold-only gate + LR decay — 150k = 32%/16.6% (Pareto stalled)
+  15. ✅ Run 024-v6 shadow reward geometry — 150k = 16%/15.5% (too conservative)
+  16. ✅ Run 024 concluded: discrimination ceiling — single-timestep ego lacks temporal context
+  17. ► Run 025 LAUNCHED on EC2 (March 19, 2026): ego_stack_frames=3, 2M SUMO training
+      After SUMO: replay fine-tune → validate on Recording #2 → target >40% det / <15% FP
+      If ceiling holds: escalate to kinematic ego training (action-dependent observations)
+  18. ○ Quantize INT8 for ESP32 (TFLite) only after a new replay-passing model exists
+  19. ○ Deploy on ESP32
+  20. ○ Professor PoC demo
 
 KEY DOCUMENTS:
+  - **Run 025 Temporal Ego Stack:** 10_PLANS_ACTIVE/RUN_025_TEMPORAL_EGO_STACK.md
   - **Run 024 Plan + Progress:** 10_PLANS_ACTIVE/RUN_024_REPLAY_CONVOY_ENV_PLAN.md
   - **Run 022 Postmortem:** 10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md
   - **Run 023 Implementation Plan:** 10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md
@@ -424,7 +462,7 @@ DO NOT:
 ## Implementation Roadmap
 
 ```
-COMPLETED (Runs 001-020 + All Architecture)        NOW: SENSITIVITY RECOVERY
+COMPLETED (Runs 001-024 + All Architecture)        NOW: RUN 025 TEMPORAL EGO STACK
 ─────────────────────────────────────────────────────────────────────────────────
 
 [Phase 1-4: ML Architecture]    [ARCH CORRECTION - COMPLETE]   [PREP - COMPLETE]
@@ -500,8 +538,8 @@ COMPLETED (Runs 001-020 + All Architecture)        NOW: SENSITIVITY RECOVERY
   ❌ Extra replay: 17.4% sensitivity / 7.72% FP
   ❌ Not promotable to 10M; next focus is sensitivity recovery
 
-CURRENT FOCUS: Run 024 reward adaptation → fix braking_received FP explosion in replay fine-tuning
-               → target >40% detection / <15% FP on Recording #2 → then quantize + deploy
+CURRENT FOCUS: Run 025 — Temporal Ego Stack (ego_stack_frames=3, 18-dim ego, features_dim=50)
+               → SUMO training on EC2 → replay fine-tune → target >40% det / <15% FP on Rec#2
 ─────────────────────────────────────────────────────────────────────────────────
   ✅ Runs 012-016: gradual slowDown signal too weak for critic (5 consecutive failures)
   ✅ Run 017: 5 structural fixes still failed — warmup contamination found & fixed
@@ -523,8 +561,13 @@ CURRENT FOCUS: Run 024 reward adaptation → fix braking_received FP explosion i
   ✅ Run 022 complete (heading removed — ego 6→5 dim)
      SUMO PASS: ~64.4% weighted reaction, avg_reward=+440.59, 0% collisions
      Replay FAIL: Rec#2 12.0% / 2.55%, Extra 26.1% / 4.58%
-  ► Run 023 implementation plan drafted
-     Keep `base_real`; replace effectively fixed-time onset with state-triggered onset on the same route
+  ✅ Run 023 complete (state-triggered onset + max_closing_speed)
+     SUMO +20pp (85%) but replay WORSE — domain gap is architectural
+  ✅ Run 024 CONCLUDED (replay fine-tuning: v3-v6 all hit discrimination ceiling)
+     v3: 72%/68% | v5: 32%/16.6% | v6: 16%/15.5% — single-timestep ego can't
+     discriminate onset vs decay. Reward shaping exhausted.
+  ► Run 025 LAUNCHED on EC2 — ego_stack_frames=3 (18-dim ego, features_dim=50)
+     Fresh 2M SUMO training, then replay fine-tune, target >40% det / <15% FP
   ○ Quantize INT8 for ESP32 only after a replay-passing model exists
   ○ Deploy on ESP32
   ○ Professor PoC demo
@@ -558,7 +601,8 @@ CURRENT FOCUS: Run 024 reward adaptation → fix braking_received FP explosion i
 | **021** | **+368.00** | **95.3%** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **Hazard decel randomization + resolved-hazard episodes improved replay sensitivity, but ego heading became a spurious route-position proxy. Recording #2 = 40.0% / 19.16%, Extra = 91.3% / 93.83%. Do not promote.** |
 | **022** | **+440.59** | **64.4%*** | **COMPLETE — SUMO PASS / REPLAY FAIL** | **Heading removed (ego 6→5 dim, features_dim 38→37). Final eval still cleared the 2M SUMO gate: ~64.4% weighted reaction from `source_reaction_summary`, 0% collisions, 98.55% behavioral success, n=1..5 covered. Replay fixed specificity but not sensitivity: Recording #2 = 12.0% / 2.55%, Extra = 26.1% / 4.58%. Keep heading removed, but do not promote to 10M.** |
 | **023** | **+416.94** | **~85%** | **COMPLETE — SUMO IMPROVED / REPLAY WORSE** | **State-triggered onset (H1) + max_closing_speed (H2). SUMO +20pp over Run 022 (85% vs 64.4%), 0% collisions, 98.55% behavioral success. Replay WORSE: Rec#2 = 12.0% / 11.28% FP, Extra = 8.7% / 21.76% FP. Domain gap is architectural, not diversity-limited.** |
-| **024** | N/A | N/A | **BREAKTHROUGH — 72% SENSITIVITY / FP REGRESSION** | **Root cause investigation found 4 bugs (ego distribution shift, pre-cone braking, episode start bias, broken telemetry). All fixed + log_std reset for exploration. v3 fine-tuning (LR=1e-4, 1M steps, log_std=-1.0) achieved 72.0% detection on Rec#2 (was 12.0%). But FP rate exploded to 68.2% (was 11.3%). Root cause: braking_received > 0.01 for 93% of steps in real data → PENALTY_IGNORING_HAZARD fires almost always → "always brake" is rational. Best balanced: 200k checkpoint (24%/16%). BLOCKED on reward adaptation for replay mode. 38 env tests, 389 total passing.** |
+| **024** | N/A | N/A | **CONCLUDED — DISCRIMINATION CEILING** | **Replay fine-tuning: 4 bugs fixed + log_std reset → v3: 72.0% det / 68.2% FP. v4: geometry gate broken in recorded-ego mode (8%/12%). v5: threshold-only best 150k = 32%/16.6% (Pareto stalled). v6: shadow geometry 150k = 16%/15.5% (too conservative). Root cause: single-timestep ego (6-dim) cannot distinguish hazard onset from stale braking decay. Reward shaping exhausted.** |
+| **025** | TBD | TBD | **► LAUNCHED ON EC2** | **Temporal ego stack: ego_stack_frames=3, ego obs 6→18 dim, features_dim 38→50. Stacks [ego_t, ego_{t-1}, ego_{t-2}] so network can see onset jumps vs decay tails. Fresh 2M SUMO training (no weight transfer). 426 unit + 20 integration tests pass. After SUMO: replay fine-tune with --ego_stack_frames 3. Target: >40% det / <15% FP on Rec#2. Escalation: kinematic ego training.** |
 
 \* Run 022's `metrics.json` does not store one top-level overall reaction field; `64.4%` is the weighted aggregate reconstructed from `source_reaction_summary`.
 

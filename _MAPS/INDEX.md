@@ -1,25 +1,26 @@
 # RoadSense V2V Documentation Index
 
-**Last Updated:** March 16, 2026
-**Total Documents:** 78+
+**Last Updated:** March 19, 2026
+**Total Documents:** 79+
 
 ---
 
 ## CURRENT PROJECT STATUS
 
 ```
- Run 022 COMPLETE — heading removed, marginal SUMO pass, replay fail
- Replay results: Recording #2 = 12.0% sensitivity / 2.55% FP; Extra = 26.1% / 4.58%
- Run 021 root cause confirmed: ego heading was the dominant false-positive leak
- Current focus: Run 023 state-triggered hazard onset on `base_real`
- Best deployability direction so far: Run 022 fixed specificity, but sensitivity remains the blocker
- Runs 018-022 prove the critic can train; sim-to-real sensitivity is now the main gap
+ Run 024-v6 COMPLETE — shadow reward geometry implemented and tested
+ Best v6 Rec#2 checkpoint: 16.0% sensitivity / 15.48% FP at 150k
+ Final v6 Rec#2 result: 0.0% sensitivity / 4.93% FP at 300k
+ Thesis-event check: at the real -8.63 m/s² brake, best v6 action was only 0.147
+ Current focus: choose the post-v6 path that restores Recording #2 sensitivity
+ Run 024 confirms replay reward shaping is still the main blocker
 
  See: PROJECT_STATUS_OVERVIEW.md for full history
 ```
 
 **Start Here:**
 - **Status:** [PROJECT_STATUS_OVERVIEW.md](../PROJECT_STATUS_OVERVIEW.md) - Single source of truth
+- **Run 024-v6 Results:** [RUN_024_V6_SHADOW_GEOMETRY_300K_RESULTS.md](../10_PLANS_ACTIVE/RUN_024_V6_SHADOW_GEOMETRY_300K_RESULTS.md) - Shadow reward geometry probe result (FAILED)
 - **Run 023 Implementation Plan:** [RUN_023_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md) - Concrete plan for state-triggered hazard onset on `base_real`
 - **Run 022 Postmortem:** [RUN_022_POSTMORTEM.md](../10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md) - Heading removal fixed FP, but replay sensitivity still failed
 - **Run 023 Hypothesis Set:** [RUN_023_HYPOTHESIS_SET.md](../10_PLANS_ACTIVE/RUN_023_HYPOTHESIS_SET.md) - Ranked next-run hypotheses
@@ -44,13 +45,14 @@ System description, contracts, and high-level design documents.
 
 ---
 
-## 10_PLANS_ACTIVE (12 files)
+## 10_PLANS_ACTIVE (13 files)
 
 Active plans with open work items.
 
 | Document | Status |
 |----------|--------|
 | [RUN_023_IMPLEMENTATION_PLAN.md](../10_PLANS_ACTIVE/RUN_023_IMPLEMENTATION_PLAN.md) | Active. Concrete Run 023 plan: state-triggered hazard onset on `base_real` |
+| [RUN_024_V6_SHADOW_GEOMETRY_300K_RESULTS.md](../10_PLANS_ACTIVE/RUN_024_V6_SHADOW_GEOMETRY_300K_RESULTS.md) | Complete. Shadow reward geometry probe failed to restore Recording #2 sensitivity |
 | [RUN_023_HYPOTHESIS_SET.md](../10_PLANS_ACTIVE/RUN_023_HYPOTHESIS_SET.md) | Active. Ranked next-run hypotheses after Run 022 replay failure |
 | [RUN_022_POSTMORTEM.md](../10_PLANS_ACTIVE/RUN_022_POSTMORTEM.md) | Complete. Heading removal fixed FP; SUMO reaction dropped to ~64%; replay sensitivity still failed |
 | [RUN_022_REMOVE_EGO_HEADING.md](../10_PLANS_ACTIVE/RUN_022_REMOVE_EGO_HEADING.md) | Complete plan. Ego heading removed; final verdict is SUMO pass / replay fail |
