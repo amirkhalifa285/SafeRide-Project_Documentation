@@ -1,12 +1,12 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 19, 2026 (Run 025 — Temporal Ego Stack launched on EC2)
+**Last Updated:** March 20, 2026 (Run 025 — COMPLETED, TARGET MET, PoC ready)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: RUN 025 — TEMPORAL EGO STACK — LAUNCHED ON EC2
+## CURRENT PHASE: RUN 025 — TEMPORAL EGO STACK — COMPLETED, TARGET MET
 
 ```
 ================================================================================
@@ -69,19 +69,18 @@ CURRENT STATUS:
      stale braking decay. Reward shaping CANNOT fix this — the observation space
      lacks discriminative power.
 
-  ► RUN 025 — TEMPORAL EGO STACK — LAUNCHED ON EC2 (March 19, 2026)
-  ✅ Code: ego_stack_frames=3 → [ego_t, ego_{t-1}, ego_{t-2}] = 18-dim (was 6-dim)
-  ✅ DeepSetExtractor features_dim: 38 → 50 (32 embed + 18 ego)
-  ✅ Files: replay_convoy_env, convoy_env, deep_set_policy, train_convoy,
-     run_replay_fine_tuning, validate_against_real_data, run_training.sh
-  ✅ 19 new tests (test_ego_stack.py), 426 unit + 20 integration passing
-  ✅ Backward compatible: ego_stack_frames=1 (default) = identical to Run 024
-  ✅ Fresh SUMO training (no weight transfer — obs dim change breaks checkpoints)
-  ✅ EC2: cloud_prod_025, 2M steps, ego_stack_frames=3, state-triggered eval
-  ► WAITING: EC2 SUMO training to complete
-  ► THEN: replay fine-tune with --ego_stack_frames 3 --use_recorded_ego --reset_log_std -1.0
-  ► TARGET: >40% detection AND <15% FP on Recording #2
-  ► IF CEILING HOLDS: escalate to kinematic ego training (action-dependent observations)
+  ★ RUN 025 — TEMPORAL EGO STACK — COMPLETED, TARGET MET (March 20, 2026)
+  ✅ SUMO TRAINING: avg_reward=+432, 0% collisions, 97.8% behavioral success
+  ✅ V2V reaction: rank-1 avg ~91% (0.22-0.44s), 276 episodes, all n=1-5
+  ✅ REPLAY FINE-TUNING: 1M steps, ego_stack_frames=3, LR 1e-4→1e-5
+  ✅ RECORDING #2 BEST (500k): 64.0% detection (16/25), 11.0% FP — TARGET MET
+  ✅ 7/10 checkpoints meet >40% det / <15% FP criterion
+  ✅ Detection DOUBLED vs Run 024-v5 (32% → 64%), FP DECREASED (16.6% → 11%)
+  ✅ ROOT CAUSE CONFIRMED: 3-frame ego stack provides onset-vs-decay discrimination
+     that single-frame observation could not achieve
+  ⚠️ Extra Driving FP: ~18-20% across all checkpoints (systematic, not overfitting)
+  ✅ PoC MODEL READY: replay_ft_500000_steps.zip for professor demonstration
+  See: 10_PLANS_ACTIVE/RUN_025_RESULTS.md for full analysis
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
   ✅ H5 SIM-TO-REAL VALIDATION COMPLETE (March 10, 2026):
