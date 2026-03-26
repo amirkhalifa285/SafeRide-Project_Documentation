@@ -28,7 +28,10 @@ Single container = zero network overhead = faster training.
 ml/
 ├── Dockerfile           # Image definition
 ├── run_docker.sh        # Cross-platform helper script
-├── demo_convoy_gui.py   # GUI visualization demo
+├── run_demo_gui.sh      # Fedora/Wayland PoC demo launcher (Run 025)
+├── demo_convoy_gui.py   # SUMO GUI demo (loads trained model)
+├── demo_replay_plot.py  # Real-data replay visualization (matplotlib)
+├── scenarios/demo_poc/  # Dedicated 3-vehicle PoC demo scenario
 ├── .dockerignore        # Build optimization
 └── requirements.txt     # Python dependencies
 ```
@@ -127,6 +130,30 @@ rm -f "$SCENARIO_DIR/fcd_output.csv" "$SCENARIO_DIR/ssm_output.xml"
 
 `./run_docker.sh demo` still uses the older Wayland path, so do not rely on it for Fedora until that script is updated.
 
+### Fedora/Wayland: Dedicated PoC Demo Launcher (Recommended)
+
+A dedicated launcher script `ml/run_demo_gui.sh` handles all Fedora/Wayland/SELinux quirks automatically:
+
+```bash
+cd roadsense-v2v
+
+# Default: loads Run 025 500k model, demo_poc scenario
+./ml/run_demo_gui.sh
+
+# Custom scenario or delay
+./ml/run_demo_gui.sh --scenario base_real --delay 0.2
+
+# Random actions (no model, for testing)
+./ml/run_demo_gui.sh --no-model
+```
+
+This script:
+- Auto-detects Wayland vs X11 and sets up `XAUTHORITY`, `xhost`, SELinux overrides
+- Runs as `--user $(id -u):$(id -g)` to avoid root-owned file issues
+- Defaults to the Run 025 PoC model (`replay_ft_500000_steps.zip`)
+- Passes all extra args through to `demo_convoy_gui.py`
+- Cleans up `xhost` permissions on exit
+
 ### macOS
 
 Requires XQuartz:
@@ -150,6 +177,7 @@ Requires XQuartz:
 | `./run_docker.sh bash` | Interactive shell (headless) |
 | `./run_docker.sh train` | Run RL training |
 | `./run_docker.sh help` | Show all options |
+| `./ml/run_demo_gui.sh` | PoC demo with Run 025 model (Fedora/Wayland) |
 
 ---
 

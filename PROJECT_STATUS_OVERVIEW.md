@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 20, 2026 (Run 025 — COMPLETED, TARGET MET, PoC ready)
+**Last Updated:** March 26, 2026 (Run 025 — COMPLETED + PoC Demo Tooling Ready)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -80,7 +80,13 @@ CURRENT STATUS:
      that single-frame observation could not achieve
   ⚠️ Extra Driving FP: ~18-20% across all checkpoints (systematic, not overfitting)
   ✅ PoC MODEL READY: replay_ft_500000_steps.zip for professor demonstration
-  See: 10_PLANS_ACTIVE/RUN_025_RESULTS.md for full analysis
+  ✅ PoC DEMO TOOLING READY (March 26, 2026):
+     - ml/demo_convoy_gui.py: SUMO GUI demo with trained model inference
+     - ml/demo_replay_plot.py: matplotlib replay visualization (3-panel event plot)
+     - ml/run_demo_gui.sh: Fedora/Wayland Docker launcher
+     - ml/scenarios/demo_poc/: dedicated 3-vehicle demo scenario
+     - Output plot: ml/results/run_025_replay_v1/demo_poc_recording02.png
+  See: 10_PLANS_ACTIVE/RUN_025_RESULTS.md for full analysis (Section 8: Demo Tooling)
   ✅ FORMATION FIX COMPLETE (March 9, 2026)
   ✅ Run 011 COMPLETE — 100% V2V reaction in SUMO (276/276), avg_reward=-86.62
   ✅ H5 SIM-TO-REAL VALIDATION COMPLETE (March 10, 2026):
