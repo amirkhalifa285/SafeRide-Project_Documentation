@@ -278,7 +278,7 @@ python3 ml/demo_convoy_gui.py \
 - Model inference via `PPO.load()` + `model.predict(obs, deterministic=True)`
 
 **Configuration:**
-- Scenario: `demo_poc` (3 vehicles, 35m spacing, departSpeed=13.0 m/s)
+- Scenario: `demo_poc` (3 vehicles, 30m spacing, departSpeed=13.0 m/s)
 - Hazard: `TARGET_STRATEGY_FIXED_VEHICLE_ID` on V003
 - max_steps=500 (hazard window steps 150-350)
 - Emulator: `emulator_params_measured.json` (convoy-calibrated)
@@ -309,7 +309,7 @@ python -m ml.demo_replay_plot -o my_custom.png     # custom output path
 
 Dedicated 3-vehicle scenario based on the real `base_real` road network (Deir Hanna, 785m edge):
 - `network.net.xml` — copied from base_real (real road from Recording #2 site)
-- `vehicles.rou.xml` — V003 pos=70, V002 pos=35, V001 pos=0, 13.0 m/s, 35m gaps
+- `vehicles.rou.xml` — V003 pos=60, V002 pos=30, V001 pos=0, 13.0 m/s, 30m gaps
 - `scenario.sumocfg` — end=65s, step-length=0.1s
 
 ### 8.4 Fedora/Wayland Launcher (`ml/run_demo_gui.sh`)
