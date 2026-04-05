@@ -1,12 +1,72 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** March 26, 2026 (Run 025 — COMPLETED + PoC Demo Tooling Ready)
+**Last Updated:** April 3, 2026 (Blind Curve Demo — WORKING)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
 ---
 
-## CURRENT PHASE: RUN 025 — TEMPORAL EGO STACK — COMPLETED, TARGET MET
+## CURRENT PHASE: BLIND CURVE DEMO COMPLETE → NEXT: FINE-TUNING BEFORE QUANTIZATION
+
+### Blind Curve V2V Demo — WORKING (March 31 – April 3, 2026)
+
+**Goal:** Demonstrate the core V2V value proposition — ego vehicle receives a braking
+warning relayed around a blind curve where there is no line-of-sight to the hazard vehicle.
+
+**Final Configuration:** 3-vehicle convoy on a hairpin curve (Road 784).
+V003 (lead, in/past the curve) emergency brakes. V002 relays to V001 (ego) via mesh.
+Ego reacts via V2V before it can physically see V003 around the bend.
+
+**Scenario:** `ml/scenarios/base_curve/` — exported from OSM, hairpin curve at ~1075-1191m.
+
+### Changes Made (March 31 – April 3, 2026)
+
+| File | Change | Why |
+|------|--------|-----|
+| `ml/scenarios/base_curve/` | New scenario: 3 vehicles, hairpin curve, Road 784, `emergencyDecel="20.0"` | Blind curve demo with hard emergency stop |
+| `ml/envs/hazard_injector.py:432-442` | Fallback: inject hazard on `fixed_vehicle_id` even if outside heading-based cone filter | Curved road geometry breaks heading-based front-peer detection |
+| `ml/envs/observation_builder.py:58-73` | `filter_observable_peers()` and `build()` accept `half_angle_deg` param | Configurable observation cone width for curves |
+| `ml/envs/convoy_env.py` | Store `cone_half_angle_deg`, pass to `filter_observable_peers()`, `build()`, AND `simulate_mesh_step()` | Widen observation cone, build cone, AND relay cone — all three needed |
+| `ml/demo_convoy_gui.py` | New CLI args: `--hazard_vehicle`, `--cone_half_angle`, `--hazard_step`, `--max_relay_hops` | Configurable curve demo without code changes |
+| `ml/demo_convoy_gui.py` | `BRAKING_DURATION` 1.0s, `HAZARD_DECEL` 25.0, `HAZARD_WINDOW_START` 50 | Abrupt emergency stop; allow earlier injection |
+| `ml/demo_convoy_gui.py` | Build emulator with `max_relay_hops` override, pass to ConvoyEnv | Configurable hop count for multi-vehicle scenarios |
+
+### Debugging Journey & Lessons Learned
+
+1. **6-vehicle convoy failed** — model trained on 3-vehicle straight roads couldn't interpret observations from 5-hop relay with alien peer feature vectors (different relative headings/positions on curve)
+2. **Three separate cone filters** had to be widened — relay cone (`simulate_mesh_step`), braking latch cone (`filter_observable_peers` in `_step_espnow`), and observation build cone (`build()` in `observation_builder.py`). Missing any one silently drops all peers.
+3. **SUMO `decel` vType cap** — `slowDown()` is capped by the vehicle's `decel`/`emergencyDecel` params. Must set `emergencyDecel="20.0"` in vType for truly hard braking.
+4. **3-vehicle topology matches training** — reducing to V001/V002/V003 (1-2 hops) produced immediate model reaction. The model generalizes to curve geometry but not to alien relay depths.
+
+### Demo Command (Working)
+```bash
+cd roadsense-v2v && ./ml/run_demo_gui.sh \
+  --scenario base_curve --hazard_vehicle V003 \
+  --cone_half_angle 90 --hazard_step 120
+```
+
+### Key Design Decisions
+- **Wider cone is demo-only**: all other callers (training, replay, validator) default to 45°
+- **All changes backward-compatible**: new params have defaults matching existing behavior
+
+---
+
+## NEXT STEPS: FINE-TUNING → QUANTIZATION PIPELINE
+
+### Priority 1: Fine-Tune Model (Pre-Quantization)
+- **Goal:** Improve detection rate and reduce false positive rate before INT8 quantization
+- **Current baseline (Run 025, 500k):** 64.0% detection / 11.0% FP on Recording #2
+- **Extra Driving FP:** ~18-20% (systematic, needs work)
+- **Approach TBD:** Additional replay fine-tuning, reward adjustments, or training on mixed scenarios
+
+### Priority 2: TFLite INT8 Quantization
+- Convert fine-tuned model to TensorFlow Lite for Microcontrollers
+- Target: ESP32 inference at 10Hz
+- Must validate post-quantization accuracy against pre-quantization baseline
+
+---
+
+## PREVIOUS PHASE: RUN 025 — TEMPORAL EGO STACK — COMPLETED, TARGET MET
 
 ```
 ================================================================================
