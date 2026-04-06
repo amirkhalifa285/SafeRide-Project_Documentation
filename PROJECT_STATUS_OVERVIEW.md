@@ -1,6 +1,6 @@
 # RoadSense V2V Project Status Overview
 
-**Last Updated:** April 3, 2026 (Blind Curve Demo — WORKING)
+**Last Updated:** April 6, 2026 (Blind Curve Mesh Proof Extended — WORKING)
 **Purpose:** Single source of truth for current project status and priorities.
 **Audience:** AI agents and developers navigating this codebase.
 
@@ -8,7 +8,7 @@
 
 ## CURRENT PHASE: BLIND CURVE DEMO COMPLETE → NEXT: FINE-TUNING BEFORE QUANTIZATION
 
-### Blind Curve V2V Demo — WORKING (March 31 – April 3, 2026)
+### Blind Curve V2V Demo — WORKING (March 31 – April 6, 2026)
 
 **Goal:** Demonstrate the core V2V value proposition — ego vehicle receives a braking
 warning relayed around a blind curve where there is no line-of-sight to the hazard vehicle.
@@ -18,6 +18,12 @@ V003 (lead, in/past the curve) emergency brakes. V002 relays to V001 (ego) via m
 Ego reacts via V2V before it can physically see V003 around the bend.
 
 **Scenario:** `ml/scenarios/base_curve/` — exported from OSM, hairpin curve at ~1075-1191m.
+
+**Mesh Proof Extension (April 6):** Added `ml/scenarios/base_curve_mesh4/` to show a
+longer relay chain `V004 → V003 → V002 → V001` on the same blind curve. The demo now
+prints a clean unique forwarding chain to ego (`MESH TRACE`) alongside the ego-visible
+received hop counts (`MESH RX`), so relay proof is readable without exposing raw
+duplicate propagation rounds.
 
 ### Changes Made (March 31 – April 3, 2026)
 
@@ -30,6 +36,8 @@ Ego reacts via V2V before it can physically see V003 around the bend.
 | `ml/demo_convoy_gui.py` | New CLI args: `--hazard_vehicle`, `--cone_half_angle`, `--hazard_step`, `--max_relay_hops` | Configurable curve demo without code changes |
 | `ml/demo_convoy_gui.py` | `BRAKING_DURATION` 1.0s, `HAZARD_DECEL` 25.0, `HAZARD_WINDOW_START` 50 | Abrupt emergency stop; allow earlier injection |
 | `ml/demo_convoy_gui.py` | Build emulator with `max_relay_hops` override, pass to ConvoyEnv | Configurable hop count for multi-vehicle scenarios |
+| `ml/scenarios/base_curve_mesh4/` | New 4-vehicle blind-curve mesh proof scenario | Show `V004→V003→V002→V001` without disturbing the original 3-car RL demo |
+| `ml/espnow_emulator/espnow_emulator.py` + `ml/envs/convoy_env.py` + `ml/demo_convoy_gui.py` | Capture raw relay events and reconstruct unique source→ego chain for printing | Clean professor-facing mesh proof without changing simulator behavior |
 
 ### Debugging Journey & Lessons Learned
 
@@ -44,6 +52,17 @@ cd roadsense-v2v && ./ml/run_demo_gui.sh \
   --scenario base_curve --hazard_vehicle V003 \
   --cone_half_angle 90 --hazard_step 120
 ```
+
+### Longer Mesh Proof Command (Working)
+```bash
+cd roadsense-v2v && ./ml/run_demo_gui.sh \
+  --scenario base_curve_mesh4 --hazard_vehicle V004 \
+  --cone_half_angle 90 --hazard_step 120
+```
+
+**Validated terminal proof (April 6):**
+- `MESH TRACE: [V004->V003, V003->V002, V002->V001]`
+- `MESH RX: [V002(hop=0), V003(hop=1), V004(hop=2)]`
 
 ### Key Design Decisions
 - **Wider cone is demo-only**: all other callers (training, replay, validator) default to 45°
